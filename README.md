@@ -34,25 +34,25 @@
 <h2 align="center">🔥 Languages & Frameworks & Tools & Abilities 🔥</h2>
 <br>
 <p align="center">
-  <code><img alt="C" height="25" src="images/c.svg"></code>
-  <code><img alt="C++" height="25" src="images/cpp.svg"></code>
-  <code><img alt="C#" height="25" src="images/cSharp.svg"></code>
-  <code><img alt="Python" height="25" src="images/python-original.svg"></code>
-  <code><img alt="Javascript" height="25" src="images/javascript.svg"></code>
-  <code><img alt="Problem Solving" height="25" src="images/problemSolving.png"></code>
-  <code><img alt="HTML5" height="25" src="images/html5.svg"></code>
-  <code><img alt="CSS" height="25" src="images/css.svg"></code>
-  <code><img alt="React" height="25" src="images/react-original.svg"></code>
-  <code><img alt="Redux" height="25" src="images/redux.svg"></code>
-  <code><img alt="Git" height="25" src="images/git-original.svg"></code>
-  <code><img alt=".NetCore" height="25" src="images/dotnetcore.svg"></code>
-  <code><img alt="PostgreSQL" height="25" src="images/postgresql.svg"></code>
-  <code><img alt="Visual Studio Code" height="25" src="images/vscode.png"></code>
-  <code><img alt="Java" height="25" src="images/java-original.svg"></code>
-  <code><img alt="JSON" height="25" src="images/json.svg"></code>
-  <code><img alt="Unity" height="25" src="images/unity3d.svg"></code>
-  <code><img alt="Android" height="25" src="images/android.svg"></code>
-  <code><img alt="npm" height="25" src="images/npm.svg"></code>
+  <code>C></code>
+  <codeC++</code>
+  <code>C#</code>
+  <code>Python</code>
+  <code>Javascript</code>
+  <code>Problem Solving</code>
+  <code>HTML5</code>
+  <code>CSS</code>
+  <code>React</code>
+  <code>Redux</code>
+  <code>Git</code>
+  <code>.NetCore</code>
+  <code>PostgreSQL</code>
+  <code>Visual Studio Code</code>
+  <code>Java</code>
+  <code>JSON</code>
+  <code>Unity</code>
+  <code>Android</code>
+  <code>npm</code>
 </p>
 <hr>
 
