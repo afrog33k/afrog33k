@@ -17,7 +17,7 @@
   <br>
    🔬 I'm currently the CTO at Patter Intelligence Corporation
   <br>
-  📫 How to reach me: <a href="mailto: ronald.adonyo@gmail.com">ronald.adonyo@gmail.com</a>
+  📫 How to reach me: <a href="mailto: ronald@salespatter.io">ronald@salespatter.io</a>
 </p>
 
 <hr>
