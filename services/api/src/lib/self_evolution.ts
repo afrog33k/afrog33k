@@ -619,7 +619,7 @@ export class EvolutionMeasurer {
   private getExperiencesInPeriod(start: Date, end: Date): Experience[] {
     const rows = this.db.prepare(`
       SELECT * FROM evolution_experiences
-      WHERE timestamp >= ? AND timestamp < ?
+      WHERE timestamp >= ? AND timestamp <= ?
     `).all(start.toISOString(), end.toISOString()) as any[];
 
     return rows.map(row => ({
