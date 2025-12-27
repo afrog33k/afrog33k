@@ -1,0 +1,37 @@
+{
+  "name": "ronald-web",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui"
+  },
+  "dependencies": {
+    "next": "14.2.5",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "mobx": "^6.12.4",
+    "mobx-react-lite": "^4.0.7",
+    "clsx": "^2.1.1"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.0",
+    "@types/react": "^18.3.3",
+    "@types/react-dom": "^18.3.0",
+    "autoprefixer": "^10.4.19",
+    "postcss": "^8.4.38",
+    "tailwindcss": "^3.4.4",
+    "typescript": "^5.4.5",
+    "@playwright/test": "^1.44.0",
+    "vitest": "^1.6.0",
+    "@vitejs/plugin-react": "^4.3.1",
+    "@testing-library/react": "^16.0.0",
+    "jsdom": "^24.1.0"
+  }
+}
