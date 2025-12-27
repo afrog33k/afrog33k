@@ -1,0 +1,37 @@
+[
+  {
+    "url": "https://github.com/paulbricman/conceptarium",
+    "title": "Conceptarium - Digital garden for thoughts",
+    "description": "A tool for planting, growing, and harvesting thoughts in a digital garden",
+    "tags": ["tools", "knowledge-management", "bricman"],
+    "priority": 5
+  },
+  {
+    "url": "https://github.com/paulbricman/ideoscope",
+    "title": "Ideoscope - Idea tracking and metrics",
+    "description": "Track and measure the evolution of ideas over time",
+    "tags": ["tools", "ideas", "bricman"],
+    "priority": 5
+  },
+  {
+    "url": "https://github.com/paulbricman/lexiscore",
+    "title": "Lexiscore - Novelty scoring for text",
+    "description": "Score text based on lexical novelty and uniqueness",
+    "tags": ["tools", "nlp", "bricman"],
+    "priority": 5
+  },
+  {
+    "url": "https://arxiv.org/abs/2303.08774",
+    "title": "GPT-4 Technical Report",
+    "description": "OpenAI's technical report on GPT-4 capabilities",
+    "tags": ["papers", "llm", "research"],
+    "priority": 3
+  },
+  {
+    "url": "https://www.anthropic.com/research",
+    "title": "Anthropic Research",
+    "description": "Research publications from Anthropic",
+    "tags": ["research", "ai-safety"],
+    "priority": 4
+  }
+]

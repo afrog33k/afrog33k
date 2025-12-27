@@ -1,0 +1,136 @@
+# Ronald-GI POC v1 - Container Orchestration
+# Works with both Docker Compose and Podman Compose
+
+services:
+  # ===========================================
+  # Ollama - LLM Inference (cross-platform)
+  # ===========================================
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ronald-ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    environment:
+      - OLLAMA_HOST=0.0.0.0
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:11434/api/tags"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+
+  # ===========================================
+  # API - Fastify + SQLite
+  # ===========================================
+  api:
+    build:
+      context: ./services/api
+      dockerfile: Dockerfile
+    container_name: ronald-api
+    ports:
+      - "3001:3001"
+    volumes:
+      - ./data:/app/data
+      - ./migrations:/app/migrations:ro
+    environment:
+      - NODE_ENV=production
+      - DATABASE_PATH=/app/data/ronald.db
+      - OLLAMA_URL=http://ollama:11434
+      - EMBEDDER_URL=http://embedder:8000
+      - PORT=3001
+    depends_on:
+      ollama:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+
+  # ===========================================
+  # Web - Next.js + Tailwind + MobX
+  # ===========================================
+  web:
+    build:
+      context: ./services/web
+      dockerfile: Dockerfile
+    container_name: ronald-web
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - NEXT_PUBLIC_API_URL=http://localhost:3001
+      - API_URL=http://api:3001
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+
+  # ===========================================
+  # Embedder - FastAPI + sentence-transformers
+  # ===========================================
+  embedder:
+    build:
+      context: ./services/embedder
+      dockerfile: Dockerfile
+    container_name: ronald-embedder
+    ports:
+      - "8000:8000"
+    volumes:
+      - embedder_cache:/root/.cache
+    environment:
+      - MODEL_NAME=all-MiniLM-L6-v2
+      - PORT=8000
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+
+  # ===========================================
+  # Worker - Python + PocketFlow + Playwright
+  # ===========================================
+  worker:
+    build:
+      context: ./services/worker
+      dockerfile: Dockerfile
+    container_name: ronald-worker
+    volumes:
+      - ./data:/app/data
+      - worker_repos:/app/repos
+    environment:
+      - DATABASE_PATH=/app/data/ronald.db
+      - OLLAMA_URL=http://ollama:11434
+      - EMBEDDER_URL=http://embedder:8000
+      - API_URL=http://api:3001
+      - OLLAMA_MODEL=qwen2.5:7b
+      - REPOS_PATH=/app/repos
+    depends_on:
+      api:
+        condition: service_healthy
+      embedder:
+        condition: service_healthy
+      ollama:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  ollama_data:
+    name: ronald_ollama_data
+  embedder_cache:
+    name: ronald_embedder_cache
+  worker_repos:
+    name: ronald_worker_repos
+
+networks:
+  default:
+    name: ronald_network

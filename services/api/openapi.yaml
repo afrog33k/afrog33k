@@ -1,0 +1,975 @@
+openapi: 3.0.3
+info:
+  title: Ronald-GI API
+  description: |
+    Local-first autonomous research assistant API.
+
+    Ronald-GI learns from your browsing patterns, monitors sources you care about,
+    and proactively surfaces insights tailored to your interests.
+
+    ## Key Features
+    - **Personalized Learning**: System learns from your interactions
+    - **Proactive Briefings**: Daily summaries of what matters
+    - **Concept Tracking**: Monitors topics you care about
+    - **Research Automation**: Autonomous research on your behalf
+
+    ## Authentication
+    This API is designed for local use and does not require authentication.
+    In production deployments, add appropriate authentication middleware.
+  version: 1.0.0
+  contact:
+    name: Ronald-GI
+  license:
+    name: MIT
+
+servers:
+  - url: http://localhost:3100/api
+    description: Local development server
+  - url: http://localhost:3100/api
+    description: Docker container
+
+tags:
+  - name: Reports
+    description: Research reports and findings
+  - name: Briefing
+    description: Daily briefings and proactive intelligence
+  - name: Concepts
+    description: Concept tracking and ontology
+  - name: Sources
+    description: Source management and discovery
+  - name: Jobs
+    description: Background job management
+  - name: Visits
+    description: Browsing history and activity
+  - name: System
+    description: System health and status
+  - name: Telemetry
+    description: User interaction tracking
+
+paths:
+  # ========== Reports ==========
+  /reports:
+    get:
+      summary: List reports
+      description: Get paginated list of research reports with optional filters
+      tags: [Reports]
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+        - name: sort
+          in: query
+          schema:
+            type: string
+            enum: [blended_score, newest, impact, novelty, relevance]
+            default: blended_score
+        - name: type
+          in: query
+          schema:
+            type: string
+            enum: [decision_memo, research_brief, repo_signal, concept_drift, watchlist_alert]
+        - name: promoted
+          in: query
+          schema:
+            type: integer
+            enum: [0, 1]
+        - name: pinned
+          in: query
+          schema:
+            type: integer
+            enum: [0, 1]
+      responses:
+        '200':
+          description: List of reports
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  reports:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Report'
+                  total:
+                    type: integer
+                  limit:
+                    type: integer
+                  offset:
+                    type: integer
+
+    post:
+      summary: Create report
+      description: Create a new research report
+      tags: [Reports]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateReport'
+      responses:
+        '200':
+          description: Created report
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Report'
+
+  /reports/home:
+    get:
+      summary: Get home view reports
+      description: Get the 3+1 stack for the home view (top 3 by blended score + 1 relevance pick)
+      tags: [Reports]
+      responses:
+        '200':
+          description: Home view reports
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  top3:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Report'
+                  relevancePick:
+                    $ref: '#/components/schemas/Report'
+
+  /reports/{id}:
+    get:
+      summary: Get report by ID
+      tags: [Reports]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Report details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Report'
+        '404':
+          description: Report not found
+
+    patch:
+      summary: Update report
+      tags: [Reports]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateReport'
+      responses:
+        '200':
+          description: Updated report
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Report'
+
+  /reports/{id}/pin:
+    post:
+      summary: Pin a report
+      description: Mark a report as pinned (shows user found it valuable)
+      tags: [Reports]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+
+  /reports/{id}/unpin:
+    post:
+      summary: Unpin a report
+      tags: [Reports]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Success
+
+  # ========== Briefing ==========
+  /briefing:
+    get:
+      summary: Get daily briefing
+      description: |
+        Get today's personalized briefing including:
+        - Discovery spikes
+        - Top reports to review
+        - Trending concepts
+        - Suggested actions
+        - Learning insights
+      tags: [Briefing]
+      responses:
+        '200':
+          description: Daily briefing
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  briefing:
+                    $ref: '#/components/schemas/DailyBriefing'
+
+  /briefing/summary:
+    get:
+      summary: Get text summary
+      description: Get a quick text summary suitable for notifications
+      tags: [Briefing]
+      responses:
+        '200':
+          description: Text summary
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  summary:
+                    type: string
+
+  /briefing/alerts:
+    get:
+      summary: Get pending alerts
+      description: Get proactive alerts that need attention
+      tags: [Briefing]
+      responses:
+        '200':
+          description: List of alerts
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  count:
+                    type: integer
+                  alerts:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ProactiveAlert'
+
+  /briefing/alerts/{id}/dismiss:
+    post:
+      summary: Dismiss an alert
+      tags: [Briefing]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Alert dismissed
+
+  /briefing/check-alerts:
+    post:
+      summary: Trigger alert check
+      description: Manually trigger a check for new alerts
+      tags: [Briefing]
+      responses:
+        '200':
+          description: Alert check results
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  newAlerts:
+                    type: integer
+
+  /briefing/research-plan:
+    get:
+      summary: Get planned research
+      description: Get the system's planned research tasks
+      tags: [Briefing]
+      responses:
+        '200':
+          description: Research plans
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  count:
+                    type: integer
+                  plans:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ResearchPlan'
+
+    post:
+      summary: Plan next research
+      description: Analyze interests and plan new research tasks
+      tags: [Briefing]
+      responses:
+        '200':
+          description: Newly planned research
+
+  /briefing/research/execute:
+    post:
+      summary: Execute next research
+      description: Start the next highest-priority research task
+      tags: [Briefing]
+      responses:
+        '200':
+          description: Research job started
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  jobId:
+                    type: string
+
+  /briefing/insights:
+    get:
+      summary: Get learning insights
+      description: What has the system learned about your preferences?
+      tags: [Briefing]
+      responses:
+        '200':
+          description: Learning insights
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  insights:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/LearningInsight'
+
+  # ========== Concepts ==========
+  /concepts:
+    get:
+      summary: List concepts
+      description: Get all tracked concepts (the ontology)
+      tags: [Concepts]
+      parameters:
+        - name: active
+          in: query
+          schema:
+            type: boolean
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 100
+      responses:
+        '200':
+          description: List of concepts
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  concepts:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Concept'
+
+  /concepts/{id}/weight:
+    post:
+      summary: Update concept weight
+      description: Adjust the preference weight for a concept
+      tags: [Concepts]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                delta:
+                  type: number
+                  description: Amount to change weight by (-1 to 1)
+      responses:
+        '200':
+          description: Weight updated
+
+  # ========== Sources ==========
+  /sources:
+    get:
+      summary: List sources
+      description: Get monitored sources
+      tags: [Sources]
+      parameters:
+        - name: priority
+          in: query
+          schema:
+            type: integer
+        - name: processed
+          in: query
+          schema:
+            type: boolean
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+      responses:
+        '200':
+          description: List of sources
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  sources:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Source'
+
+    post:
+      summary: Add source
+      description: Add a new source to monitor
+      tags: [Sources]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateSource'
+      responses:
+        '200':
+          description: Source created
+
+  # ========== Jobs ==========
+  /jobs:
+    get:
+      summary: List jobs
+      description: Get background jobs
+      tags: [Jobs]
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [pending, processing, completed, failed]
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+      responses:
+        '200':
+          description: List of jobs
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  jobs:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Job'
+
+  /jobs/{id}:
+    get:
+      summary: Get job status
+      tags: [Jobs]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Job details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Job'
+
+  # ========== Visits ==========
+  /visits:
+    get:
+      summary: List visits
+      description: Get browsing history visits
+      tags: [Visits]
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 100
+        - name: host
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of visits
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  visits:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Visit'
+
+    post:
+      summary: Record visit
+      description: Record a new browsing visit
+      tags: [Visits]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateVisit'
+      responses:
+        '200':
+          description: Visit recorded
+
+  # ========== Telemetry ==========
+  /telemetry:
+    post:
+      summary: Record telemetry event
+      description: Track user interaction with reports/UI
+      tags: [Telemetry]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TelemetryEvent'
+      responses:
+        '200':
+          description: Event recorded
+
+  # ========== System ==========
+  /system/health:
+    get:
+      summary: Health check
+      description: Check system health status
+      tags: [System]
+      responses:
+        '200':
+          description: System is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum: [ok, degraded, unhealthy]
+                  checks:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        name:
+                          type: string
+                        healthy:
+                          type: boolean
+
+  /system/stats:
+    get:
+      summary: Get system stats
+      description: Get counts and statistics
+      tags: [System]
+      responses:
+        '200':
+          description: System statistics
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  reports:
+                    type: integer
+                  concepts:
+                    type: integer
+                  sources:
+                    type: integer
+                  visits:
+                    type: integer
+                  jobs:
+                    type: object
+                    properties:
+                      pending:
+                        type: integer
+                      completed:
+                        type: integer
+
+components:
+  schemas:
+    Report:
+      type: object
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+          enum: [decision_memo, research_brief, repo_signal, concept_drift, watchlist_alert]
+        title:
+          type: string
+        summary:
+          type: string
+        findings_json:
+          type: string
+        decision:
+          type: string
+        impact_score:
+          type: number
+        novelty_score:
+          type: number
+        relevance_score:
+          type: number
+        blended_score:
+          type: number
+        pinned:
+          type: integer
+        promoted:
+          type: integer
+        archived:
+          type: integer
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    CreateReport:
+      type: object
+      required: [type, title]
+      properties:
+        type:
+          type: string
+          enum: [decision_memo, research_brief, repo_signal, concept_drift, watchlist_alert]
+        title:
+          type: string
+        summary:
+          type: string
+        impact_score:
+          type: number
+        novelty_score:
+          type: number
+
+    UpdateReport:
+      type: object
+      properties:
+        title:
+          type: string
+        summary:
+          type: string
+        pinned:
+          type: integer
+        promoted:
+          type: integer
+        archived:
+          type: integer
+
+    DailyBriefing:
+      type: object
+      properties:
+        date:
+          type: string
+        greeting:
+          type: string
+        discoverySpikes:
+          type: array
+          items:
+            $ref: '#/components/schemas/DiscoverySpike'
+        topReports:
+          type: array
+          items:
+            $ref: '#/components/schemas/BriefingReport'
+        trendingConcepts:
+          type: array
+          items:
+            $ref: '#/components/schemas/TrendingConcept'
+        suggestedActions:
+          type: array
+          items:
+            $ref: '#/components/schemas/SuggestedAction'
+        learningInsights:
+          type: array
+          items:
+            $ref: '#/components/schemas/LearningInsight'
+        stats:
+          $ref: '#/components/schemas/BriefingStats'
+
+    DiscoverySpike:
+      type: object
+      properties:
+        id:
+          type: string
+        topic:
+          type: string
+        intensity:
+          type: number
+        visitCount:
+          type: integer
+        relatedConcepts:
+          type: array
+          items:
+            type: string
+        suggestedAction:
+          type: string
+
+    BriefingReport:
+      type: object
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+        type:
+          type: string
+        relevanceScore:
+          type: number
+        whyShowing:
+          type: string
+
+    TrendingConcept:
+      type: object
+      properties:
+        label:
+          type: string
+        trend:
+          type: string
+          enum: [rising, hot, cooling]
+        changePercent:
+          type: number
+        mentionCount:
+          type: integer
+
+    SuggestedAction:
+      type: object
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+          enum: [read, research, connect, test, review]
+        title:
+          type: string
+        priority:
+          type: string
+          enum: [high, medium, low]
+        reason:
+          type: string
+
+    LearningInsight:
+      type: object
+      properties:
+        type:
+          type: string
+          enum: [preference_shift, new_interest, fading_interest, pattern_detected]
+        title:
+          type: string
+        description:
+          type: string
+        evidence:
+          type: array
+          items:
+            type: string
+
+    BriefingStats:
+      type: object
+      properties:
+        reportsGenerated24h:
+          type: integer
+        conceptsTracked:
+          type: integer
+        sourcesMonitored:
+          type: integer
+        totalResearchHours:
+          type: number
+
+    ProactiveAlert:
+      type: object
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+          enum: [discovery_spike, high_impact, action_needed, learning_insight]
+        priority:
+          type: string
+          enum: [urgent, important, informational]
+        title:
+          type: string
+        message:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        dismissed:
+          type: boolean
+
+    ResearchPlan:
+      type: object
+      properties:
+        id:
+          type: string
+        topic:
+          type: string
+        priority:
+          type: integer
+        estimatedTime:
+          type: string
+        status:
+          type: string
+          enum: [planned, in_progress, completed]
+        reason:
+          type: string
+
+    Concept:
+      type: object
+      properties:
+        id:
+          type: string
+        label:
+          type: string
+        type:
+          type: string
+        active:
+          type: boolean
+        mention_count:
+          type: integer
+
+    Source:
+      type: object
+      properties:
+        id:
+          type: string
+        url:
+          type: string
+        title:
+          type: string
+        host:
+          type: string
+        priority:
+          type: integer
+        processed_at:
+          type: string
+          format: date-time
+
+    CreateSource:
+      type: object
+      required: [url]
+      properties:
+        url:
+          type: string
+        title:
+          type: string
+        priority:
+          type: integer
+          default: 5
+
+    Job:
+      type: object
+      properties:
+        id:
+          type: string
+        job_type:
+          type: string
+        status:
+          type: string
+          enum: [pending, processing, completed, failed]
+        priority:
+          type: integer
+        created_at:
+          type: string
+          format: date-time
+        completed_at:
+          type: string
+          format: date-time
+
+    Visit:
+      type: object
+      properties:
+        id:
+          type: string
+        url:
+          type: string
+        title:
+          type: string
+        host:
+          type: string
+        visited_at:
+          type: string
+          format: date-time
+        cluster_id:
+          type: string
+
+    CreateVisit:
+      type: object
+      required: [url]
+      properties:
+        url:
+          type: string
+        title:
+          type: string
+        browser:
+          type: string
+
+    TelemetryEvent:
+      type: object
+      required: [event_type]
+      properties:
+        event_type:
+          type: string
+          enum: [open, click, scroll, pin, unpin, dismiss, expand]
+        report_id:
+          type: string
+        source_id:
+          type: string
+        metadata_json:
+          type: string

@@ -1,0 +1,55 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build outputs
+.next/
+dist/
+build/
+*.egg-info/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Environment
+.env
+.env.local
+.env.*.local
+*.env
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Test outputs
+coverage/
+.nyc_output/
+playwright-report/
+test-results/
+
+# Data (keep structure, not contents)
+data/*.db
+data/*.sqlite
+*.db-journal
+
+# OS files
+Thumbs.db
+
+# Python virtual environments
+venv/
+.venv/
+env/
+
+# Temporary files
+tmp/
+temp/
+*.tmp
