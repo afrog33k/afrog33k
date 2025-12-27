@@ -503,15 +503,18 @@ describe('Self-Evolution Loop', () => {
 
     it('should transition from exploration to consolidation', () => {
       const db = getTestDb();
-      const curriculum = new CurriculumManager(db);
 
-      // Simulate good metrics after exploration window
-      const initial = curriculum.getCurriculum();
+      // First, create initial curriculum with old lastPhaseChange
+      const initial = new CurriculumManager(db);
+      const initialState = initial.getCurriculum();
 
-      // Manually set lastPhaseChange to past
+      // Manually set lastPhaseChange to 10 days ago
       db.prepare(`
         UPDATE evolution_curriculum SET last_phase_change = ?
       `).run(new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString());
+
+      // Create new instance to pick up the change
+      const curriculum = new CurriculumManager(db);
 
       const metrics = {
         periodStart: new Date(),
@@ -527,7 +530,7 @@ describe('Self-Evolution Loop', () => {
 
       const updated = curriculum.adjust(metrics);
       expect(updated.currentPhase).toBe('consolidation');
-      expect(updated.explorationRate).toBeLessThan(initial.explorationRate);
+      expect(updated.explorationRate).toBeLessThan(initialState.explorationRate);
     });
 
     it('should fall back to exploration on degradation', () => {
