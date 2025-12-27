@@ -396,6 +396,10 @@ describe('Self-Evolution Loop', () => {
   describe('EvolutionMeasurer', () => {
     it('should calculate accuracy for a period', () => {
       const db = getTestDb();
+
+      // Clear any existing experiences first
+      db.prepare('DELETE FROM evolution_experiences').run();
+
       const measurer = new EvolutionMeasurer(db);
 
       // Create 80% accurate experiences (all within window)
