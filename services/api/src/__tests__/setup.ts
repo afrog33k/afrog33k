@@ -274,6 +274,66 @@ export function getTestDb(): Database.Database {
         recorded_at TEXT DEFAULT (datetime('now'))
       );
     `);
+
+    // Create Self-Evolution tables
+    testDb.exec(`
+      -- Evolution experiences (predictions + outcomes)
+      CREATE TABLE IF NOT EXISTS evolution_experiences (
+        id TEXT PRIMARY KEY,
+        timestamp TEXT NOT NULL,
+        prediction_type TEXT NOT NULL,
+        predicted_value TEXT NOT NULL,
+        actual_value TEXT NOT NULL,
+        was_correct INTEGER NOT NULL,
+        context_json TEXT NOT NULL,
+        user_feedback TEXT,
+        confidence REAL NOT NULL
+      );
+
+      -- Evolution patterns (learned from experiences)
+      CREATE TABLE IF NOT EXISTS evolution_patterns (
+        id TEXT PRIMARY KEY,
+        type TEXT NOT NULL,
+        description TEXT NOT NULL,
+        conditions_json TEXT NOT NULL,
+        predicted_outcome TEXT NOT NULL,
+        confidence REAL NOT NULL,
+        support_count INTEGER NOT NULL,
+        contradict_count INTEGER NOT NULL,
+        created_at TEXT NOT NULL,
+        last_updated TEXT NOT NULL
+      );
+
+      -- Evolution rules (derived from patterns)
+      CREATE TABLE IF NOT EXISTS evolution_rules (
+        id TEXT PRIMARY KEY,
+        pattern_id TEXT NOT NULL,
+        prediction_type TEXT NOT NULL,
+        priority INTEGER NOT NULL,
+        is_active INTEGER NOT NULL,
+        accuracy REAL NOT NULL,
+        usage_count INTEGER DEFAULT 0,
+        last_used TEXT,
+        created_at TEXT NOT NULL
+      );
+
+      -- Learning curriculum state
+      CREATE TABLE IF NOT EXISTS evolution_curriculum (
+        id INTEGER PRIMARY KEY,
+        current_phase TEXT NOT NULL,
+        exploration_rate REAL NOT NULL,
+        confidence_threshold REAL NOT NULL,
+        min_support_count INTEGER NOT NULL,
+        evaluation_window INTEGER NOT NULL,
+        last_phase_change TEXT NOT NULL
+      );
+
+      -- Indexes
+      CREATE INDEX IF NOT EXISTS idx_evolution_exp_type ON evolution_experiences(prediction_type);
+      CREATE INDEX IF NOT EXISTS idx_evolution_exp_timestamp ON evolution_experiences(timestamp);
+      CREATE INDEX IF NOT EXISTS idx_evolution_patterns_type ON evolution_patterns(type);
+      CREATE INDEX IF NOT EXISTS idx_evolution_rules_active ON evolution_rules(is_active);
+    `);
   }
   return testDb;
 }
