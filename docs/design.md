@@ -439,15 +439,24 @@ Answers: "Is this system actually useful?"
 
 **Implementation**: `services/api/src/lib/eval_framework.ts`
 
-### 14.4 Self-Evolution Loop (Pending)
+### 14.4 Self-Evolution Loop (Complete)
 
 Based on EvolveR (arxiv:2510.16079) and ALAS (arxiv:2508.15805):
 
 ```
-Experience Storage → Distillation → Model Update → Measure → Repeat
+User Correction → Experience Store → Pattern Distiller → Rule Updater
+                                                              ↓
+              Curriculum Manager ← Evolution Measurer ← Active Rules
 ```
 
-**Status**: Architecture designed, implementation pending.
+**Key Components:**
+- ExperienceStore: Record predictions and actual outcomes
+- PatternDistiller: Discover temporal, contextual, behavioral patterns
+- RuleUpdater: Create/update/deprecate rules from patterns
+- EvolutionMeasurer: Track accuracy and improvement rate
+- CurriculumManager: Adaptive phases (exploration → consolidation → refinement)
+
+**Implementation**: `services/api/src/lib/self_evolution.ts`
 
 ### 14.5 Platform Detection
 
