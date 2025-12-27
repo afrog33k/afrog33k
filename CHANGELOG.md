@@ -8,6 +8,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Self-Evolution Loop** (`services/api/src/lib/self_evolution.ts`)
+  - ExperienceStore: Record predictions and actual outcomes
+  - PatternDistiller: Discover temporal, contextual, behavioral patterns
+  - RuleUpdater: Create/update/deprecate rules from patterns
+  - EvolutionMeasurer: Track accuracy and improvement over time
+  - CurriculumManager: Adaptive learning phases (exploration → consolidation → refinement)
+  - SelfEvolutionLoop: Full orchestration with prediction and feedback
+  - 32 comprehensive tests in `self_evolution.test.ts`
+  - Based on EvolveR (arxiv:2510.16079) and ALAS (arxiv:2508.15805)
+
 - **BDI User Modeling System** (`services/api/src/lib/bdi_model.ts`)
   - BeliefManager: Track user expertise, interests, preferences, context
   - DesireManager: Model user goals, aspirations, needs
@@ -47,7 +57,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Activity simulation helpers (focused, scattered, crashed, hyperfocus)
 
 ### Changed
-- Enhanced test suite now covers 257/266 tests passing (96.6%)
+- Enhanced test suite now covers 289/298 tests passing (97.0%)
 
 ### Research Papers Referenced
 - Satori (arxiv:2410.16668): BDI user modeling
