@@ -396,13 +396,13 @@ describe('Self-Evolution Loop', () => {
   describe('EvolutionMeasurer', () => {
     it('should calculate accuracy for a period', () => {
       const db = getTestDb();
-
-      // Clear any existing experiences first
-      db.prepare('DELETE FROM evolution_experiences').run();
-
       const measurer = new EvolutionMeasurer(db);
 
-      // Create 80% accurate experiences (all within window)
+      // Count existing experiences to account for in assertions
+      const existingCount = (db.prepare('SELECT COUNT(*) as cnt FROM evolution_experiences').get() as any)?.cnt || 0;
+      const existingCorrect = (db.prepare('SELECT COUNT(*) as cnt FROM evolution_experiences WHERE was_correct = 1').get() as any)?.cnt || 0;
+
+      // Create 10 experiences: 8 correct, 2 wrong
       for (let i = 0; i < 10; i++) {
         createTestExperience(db, {
           predictionType: 'attention_state',
@@ -414,9 +414,16 @@ describe('Self-Evolution Loop', () => {
       }
 
       const metrics = measurer.measure(7);
-      expect(metrics.accuracy).toBe(0.8);
-      expect(metrics.totalPredictions).toBe(10);
-      expect(metrics.correctPredictions).toBe(8);
+
+      // Verify our additions worked correctly
+      const expectedTotal = existingCount + 10;
+      const expectedCorrect = existingCorrect + 8;
+      const expectedAccuracy = expectedTotal > 0 ? expectedCorrect / expectedTotal : 0;
+
+      expect(metrics.totalPredictions).toBe(expectedTotal);
+      expect(metrics.correctPredictions).toBe(expectedCorrect);
+      // Check accuracy is calculated correctly given the data
+      expect(metrics.accuracy).toBeCloseTo(expectedAccuracy, 2);
     });
 
     it('should calculate improvement rate', () => {
