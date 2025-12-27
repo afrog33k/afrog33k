@@ -398,14 +398,14 @@ describe('Self-Evolution Loop', () => {
       const db = getTestDb();
       const measurer = new EvolutionMeasurer(db);
 
-      // Create 80% accurate experiences
+      // Create 80% accurate experiences (all within window)
       for (let i = 0; i < 10; i++) {
         createTestExperience(db, {
           predictionType: 'attention_state',
           predictedValue: 'focused',
           actualValue: i < 8 ? 'focused' : 'scattered',
           context: { timeOfDay: 'morning', dayOfWeek: i % 7 },
-          daysAgo: i % 7,
+          daysAgo: 0, // All today to ensure they're in the 7-day window
         });
       }
 
