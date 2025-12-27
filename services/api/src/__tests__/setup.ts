@@ -817,3 +817,183 @@ export function simulateHyperfocus(db: Database.Database, userId: string) {
     durationMs: 50 * 60 * 1000,
   });
 }
+
+// ============================================
+// SELF-EVOLUTION HELPERS
+// ============================================
+
+export interface TestExperience {
+  predictionType: 'attention_state' | 'interest' | 'need' | 'intervention';
+  predictedValue: string;
+  actualValue: string;
+  context: {
+    timeOfDay: 'morning' | 'afternoon' | 'evening' | 'night';
+    dayOfWeek: number;
+    activityType?: string;
+    tabCount?: number;
+    cognitiveLoad?: 'low' | 'medium' | 'high';
+  };
+  daysAgo?: number;
+}
+
+/** Create a test experience for self-evolution */
+export function createTestExperience(db: Database.Database, exp: TestExperience) {
+  const id = randomId();
+  const timestamp = new Date();
+  if (exp.daysAgo) {
+    timestamp.setDate(timestamp.getDate() - exp.daysAgo);
+  }
+
+  db.prepare(`
+    INSERT INTO evolution_experiences
+    (id, timestamp, prediction_type, predicted_value, actual_value, was_correct, context_json, confidence)
+    VALUES (?, ?, ?, ?, ?, ?, ?, 1.0)
+  `).run(
+    id,
+    timestamp.toISOString(),
+    exp.predictionType,
+    exp.predictedValue,
+    exp.actualValue,
+    exp.predictedValue === exp.actualValue ? 1 : 0,
+    JSON.stringify(exp.context)
+  );
+
+  return id;
+}
+
+/** Create experiences that establish a temporal pattern */
+export function createTemporalPattern(
+  db: Database.Database,
+  timeOfDay: 'morning' | 'afternoon' | 'evening' | 'night',
+  actualState: string,
+  count: number = 10
+) {
+  for (let i = 0; i < count; i++) {
+    createTestExperience(db, {
+      predictionType: 'attention_state',
+      predictedValue: actualState, // correct predictions
+      actualValue: actualState,
+      context: {
+        timeOfDay,
+        dayOfWeek: i % 7,
+      },
+      daysAgo: i,
+    });
+  }
+}
+
+/** Create experiences that establish a contextual pattern */
+export function createContextualPattern(
+  db: Database.Database,
+  condition: { tabCount?: number; cognitiveLoad?: 'low' | 'medium' | 'high' },
+  actualState: string,
+  count: number = 10
+) {
+  for (let i = 0; i < count; i++) {
+    createTestExperience(db, {
+      predictionType: 'attention_state',
+      predictedValue: actualState,
+      actualValue: actualState,
+      context: {
+        timeOfDay: 'afternoon',
+        dayOfWeek: i % 7,
+        ...condition,
+      },
+      daysAgo: i,
+    });
+  }
+}
+
+/** Create mixed experiences (some correct, some not) */
+export function createMixedExperiences(
+  db: Database.Database,
+  correctRatio: number = 0.7,
+  count: number = 20
+) {
+  const states = ['focused', 'scattered', 'hyperfocus', 'crashed'];
+  const times: Array<'morning' | 'afternoon' | 'evening' | 'night'> = ['morning', 'afternoon', 'evening', 'night'];
+
+  for (let i = 0; i < count; i++) {
+    const actual = states[i % states.length];
+    const predicted = Math.random() < correctRatio
+      ? actual
+      : states[(i + 1) % states.length];
+
+    createTestExperience(db, {
+      predictionType: 'attention_state',
+      predictedValue: predicted,
+      actualValue: actual,
+      context: {
+        timeOfDay: times[i % times.length],
+        dayOfWeek: i % 7,
+        tabCount: 5 + Math.floor(Math.random() * 20),
+      },
+      daysAgo: i % 30,
+    });
+  }
+}
+
+/** Create a test pattern */
+export function createTestPattern(db: Database.Database, overrides: Partial<{
+  id: string;
+  type: string;
+  description: string;
+  conditions: Array<{ field: string; operator: string; value: any }>;
+  predictedOutcome: string;
+  confidence: number;
+  supportCount: number;
+  contradictCount: number;
+}> = {}) {
+  const id = overrides.id || randomId();
+  const now = new Date().toISOString();
+
+  db.prepare(`
+    INSERT INTO evolution_patterns
+    (id, type, description, conditions_json, predicted_outcome, confidence, support_count, contradict_count, created_at, last_updated)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).run(
+    id,
+    overrides.type || 'temporal',
+    overrides.description || 'Test pattern',
+    JSON.stringify(overrides.conditions || [{ field: 'timeOfDay', operator: 'eq', value: 'morning' }]),
+    overrides.predictedOutcome || 'focused',
+    overrides.confidence ?? 0.8,
+    overrides.supportCount ?? 10,
+    overrides.contradictCount ?? 2,
+    now,
+    now
+  );
+
+  return id;
+}
+
+/** Create a test rule */
+export function createTestRule(db: Database.Database, overrides: Partial<{
+  id: string;
+  patternId: string;
+  predictionType: string;
+  priority: number;
+  isActive: boolean;
+  accuracy: number;
+  usageCount: number;
+}> = {}) {
+  const id = overrides.id || randomId();
+  const patternId = overrides.patternId || createTestPattern(db);
+
+  db.prepare(`
+    INSERT INTO evolution_rules
+    (id, pattern_id, prediction_type, priority, is_active, accuracy, usage_count, created_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+  `).run(
+    id,
+    patternId,
+    overrides.predictionType || 'attention_state',
+    overrides.priority ?? 80,
+    overrides.isActive !== false ? 1 : 0,
+    overrides.accuracy ?? 0.8,
+    overrides.usageCount ?? 0,
+    new Date().toISOString()
+  );
+
+  return id;
+}
