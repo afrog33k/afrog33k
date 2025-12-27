@@ -399,31 +399,40 @@ describe('Self-Evolution Loop', () => {
       const store = new ExperienceStore(db);
       const measurer = new EvolutionMeasurer(db);
 
-      // Record experiences directly through the store
-      let correctCount = 0;
-      let totalCount = 0;
+      // Get baseline
+      const baseline = measurer.measure(7);
+      const baseTotal = baseline.totalPredictions;
+      const baseCorrect = baseline.correctPredictions;
 
-      for (let i = 0; i < 10; i++) {
-        const isCorrect = i < 8;
-        store.record({
-          timestamp: new Date(),
-          predictionType: 'attention_state',
-          predictedValue: 'focused',
-          actualValue: isCorrect ? 'focused' : 'scattered',
-          wasCorrect: isCorrect,
-          context: { timeOfDay: 'morning', dayOfWeek: i % 7 },
-          confidence: 1.0,
-        });
-        totalCount++;
-        if (isCorrect) correctCount++;
-      }
+      // Add one correct experience
+      store.record({
+        timestamp: new Date(),
+        predictionType: 'attention_state',
+        predictedValue: 'focused',
+        actualValue: 'focused',
+        wasCorrect: true,
+        context: { timeOfDay: 'morning', dayOfWeek: 1 },
+        confidence: 1.0,
+      });
+
+      // Add one incorrect experience
+      store.record({
+        timestamp: new Date(),
+        predictionType: 'attention_state',
+        predictedValue: 'focused',
+        actualValue: 'scattered',
+        wasCorrect: false,
+        context: { timeOfDay: 'afternoon', dayOfWeek: 2 },
+        confidence: 1.0,
+      });
 
       const metrics = measurer.measure(7);
 
-      // Should have at least our 10 experiences
-      expect(metrics.totalPredictions).toBeGreaterThanOrEqual(10);
-      expect(metrics.correctPredictions).toBeGreaterThanOrEqual(8);
-      // Accuracy should be reasonable (accounting for any pre-existing data)
+      // Should have 2 more than baseline
+      expect(metrics.totalPredictions).toBe(baseTotal + 2);
+      expect(metrics.correctPredictions).toBe(baseCorrect + 1);
+
+      // Accuracy should be valid
       expect(metrics.accuracy).toBeGreaterThanOrEqual(0);
       expect(metrics.accuracy).toBeLessThanOrEqual(1);
     });
