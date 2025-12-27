@@ -72,6 +72,7 @@ This session implemented advanced cognitive modeling for Ronald-GI based on 2025
 1. **`services/api/src/__tests__/bdi_model.test.ts`** (510 lines)
 2. **`services/api/src/__tests__/attention_inference.test.ts`** (700 lines)
 3. **`services/api/src/__tests__/eval_framework.test.ts`** (500 lines)
+4. **`services/api/src/__tests__/self_evolution.test.ts`** (750 lines)
 
 ### Modified Files
 
