@@ -37,8 +37,22 @@ Validate that the Ronald-GI memory system provides **measurable value** over bas
 |-----------|-------|---------------|
 | [LoCoMo](https://arxiv.org/abs/2402.17753) | ACL 2024 | Long-term conversational memory |
 | [PersonaMem](https://arxiv.org/abs/2504.14225) | 2025 | Dynamic user profiling |
+| [PersonaMem-v2](https://huggingface.co/datasets/bowen-upenn/PersonaMem-v2) | 2025 | Implicit persona retrieval (51.7k samples) |
 | [MemoryBench](https://arxiv.org/abs/2510.17281) | 2025 | Memory and continual learning |
 | [Evo-Memory](https://arxiv.org/abs/2511.20857) | 2025 | Test-time memory evolution |
+
+### PersonaMem-v2 Integration
+
+PersonaMem-v2 is ideal for benchmarking Ronald-GI because it tests:
+- **Implicit persona retrieval** from long chat histories (32k/128k tokens)
+- **Preference consistency** across stereotypical and anti-stereotypical scenarios
+- **Distance metrics** between relevant snippets and queries
+- **Multiple context windows** for memory system stress testing
+
+```bash
+# Download PersonaMem-v2 for benchmarking
+huggingface-cli download bowen-upenn/PersonaMem-v2 --local-dir ./data/personamem-v2
+```
 
 ## Running Benchmarks
 
