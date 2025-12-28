@@ -22,6 +22,7 @@
 import Database from 'better-sqlite3';
 import { EventEmitter } from 'events';
 import { ResearchAdapter, SearchResult, RepoInfo, PaperInfo } from './research_adapter';
+import { CognitiveIntegration } from './cognitive_integration';
 
 // ============================================================================
 // TYPES
@@ -151,6 +152,7 @@ export class LivingCore extends EventEmitter {
   private running: boolean = false;
   private state: HeartbeatState;
   private researchAdapter: ResearchAdapter;
+  private cognitive: CognitiveIntegration;
 
   constructor(config: Partial<LivingCoreConfig> = {}) {
     super();
@@ -171,6 +173,10 @@ export class LivingCore extends EventEmitter {
     // Initialize research adapter
     this.researchAdapter = new ResearchAdapter();
     this.setupResearchAdapterEvents();
+
+    // Initialize cognitive integration (BDI + Drives + Attention)
+    this.cognitive = new CognitiveIntegration(this.db);
+    this.setupCognitiveEvents();
 
     this.state = {
       lastBeat: new Date(),
