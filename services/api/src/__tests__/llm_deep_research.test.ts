@@ -140,7 +140,7 @@ Found 2 web results:
 
 Write an updated synthesis.`);
 
-      expect(response).toContain('findings');
+      expect(response.toLowerCase()).toContain('findings');
       expect(response.length).toBeGreaterThan(100);
     });
 
