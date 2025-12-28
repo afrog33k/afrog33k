@@ -124,8 +124,8 @@ export class DeepResearchEngine extends EventEmitter {
     this.config = {
       maxIterations: config.maxIterations || 10,
       maxSourcesPerQuery: config.maxSourcesPerQuery || 5,
-      minRelevanceThreshold: config.minRelevanceThreshold || 0.3,
-      minNoveltyThreshold: config.minNoveltyThreshold || 0.2,
+      minRelevanceThreshold: config.minRelevanceThreshold ?? 0.2, // Lower threshold to capture more findings
+      minNoveltyThreshold: config.minNoveltyThreshold ?? 0.1,
       settledThreshold: config.settledThreshold || 0.8,
       costBudget: config.costBudget || 100,
     };
