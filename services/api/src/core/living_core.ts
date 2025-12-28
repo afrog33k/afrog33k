@@ -201,6 +201,14 @@ export class LivingCore extends EventEmitter {
     this.researchAdapter.on('arxiv_search_error', (data) => this.emit('arxiv_search_error', data));
   }
 
+  private setupCognitiveEvents(): void {
+    this.cognitive.on('beliefs_updated', (data) => this.emit('beliefs_updated', data));
+    this.cognitive.on('desires_updated', (data) => this.emit('desires_updated', data));
+    this.cognitive.on('drive_accumulated', (data) => this.emit('drive_accumulated', data));
+    this.cognitive.on('drive_satisfied', (data) => this.emit('drive_satisfied', data));
+    this.cognitive.on('attention_updated', (data) => this.emit('attention_updated', data));
+  }
+
   // ==========================================================================
   // SCHEMA INITIALIZATION
   // ==========================================================================
