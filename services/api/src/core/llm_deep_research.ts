@@ -1397,7 +1397,18 @@ export class OllamaLLMProvider implements LLMProvider {
     }
 
     const data = await response.json();
-    return data.response || '';
+    // Qwen3 models use a "thinking" field for reasoning - combine with response
+    // The thinking field contains the actual content for these models
+    const thinking = data.thinking || '';
+    const responseText = data.response || '';
+
+    // If we have thinking but no response, use thinking as the response
+    // This is common with qwen3 models that do chain-of-thought
+    if (thinking && !responseText) {
+      return thinking;
+    }
+
+    return responseText || thinking;
   }
 }
 
