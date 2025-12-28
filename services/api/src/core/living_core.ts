@@ -212,6 +212,26 @@ export class LivingCore extends EventEmitter {
     this.researchAdapter.on('arxiv_search_error', (data) => this.emit('arxiv_search_error', data));
   }
 
+  private setupDeepResearchEvents(): void {
+    this.deepResearch.on('session_started', (data) => this.emit('deep_research_started', data));
+    this.deepResearch.on('iteration_started', (data) => this.emit('deep_research_iteration', data));
+    this.deepResearch.on('finding_added', (data) => {
+      this.emit('deep_research_finding', data);
+      // Add new concepts to existing knowledge
+      if (data.finding.newConcepts?.length > 0) {
+        this.deepResearch.addExistingKnowledge(data.finding.newConcepts);
+      }
+    });
+    this.deepResearch.on('iteration_complete', (data) => {
+      this.emit('deep_research_progress', data);
+    });
+    this.deepResearch.on('research_complete', (data) => {
+      this.emit('deep_research_complete', data);
+      // Satisfy curiosity drive when research completes
+      this.cognitive.updateDrivesFromActivity('research');
+    });
+  }
+
   private setupCognitiveEvents(): void {
     this.cognitive.on('beliefs_updated', (data) => this.emit('beliefs_updated', data));
     this.cognitive.on('desires_updated', (data) => this.emit('desires_updated', data));
