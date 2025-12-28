@@ -21,9 +21,18 @@ import {
   type VectorSearch,
 } from '../services/api/src/lib/vector_search';
 import { createTrustProvenanceManager, type TrustProvenanceManager } from '../services/api/src/lib/trust_provenance';
-import { WorkingMemory, createWorkingMemory } from '../services/api/src/lib/working_memory';
-import { DrivesManager, createDrivesManager, type DriveType } from '../services/api/src/lib/drives';
+import { WorkingMemory } from '../services/api/src/lib/working_memory';
+import { DrivesManager, type DriveType } from '../services/api/src/lib/drives';
 import { DecayCalculator, MemoryDecayManager } from '../services/api/src/lib/memory_decay';
+
+// Factory functions for convenience
+function createWorkingMemory(db: Database.Database): WorkingMemory {
+  return new WorkingMemory(db);
+}
+
+function createDrivesManager(db: Database.Database): DrivesManager {
+  return new DrivesManager(db);
+}
 
 // =============================================================================
 // Test Framework
