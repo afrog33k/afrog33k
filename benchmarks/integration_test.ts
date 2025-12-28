@@ -393,6 +393,132 @@ async function testMemoryDecay(): Promise<TestResult[]> {
 }
 
 // =============================================================================
+// Schema Initialization
+// =============================================================================
+
+function initializeSchema(db: Database.Database): void {
+  // Memory Graph tables
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS graph_nodes (
+      id TEXT PRIMARY KEY,
+      type TEXT NOT NULL,
+      label TEXT NOT NULL,
+      properties_json TEXT,
+      created_at TEXT DEFAULT (datetime('now')),
+      updated_at TEXT DEFAULT (datetime('now'))
+    );
+
+    CREATE TABLE IF NOT EXISTS graph_edges (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      source_id TEXT NOT NULL,
+      target_id TEXT NOT NULL,
+      relationship TEXT NOT NULL,
+      weight REAL DEFAULT 1.0,
+      properties_json TEXT,
+      created_at TEXT DEFAULT (datetime('now')),
+      FOREIGN KEY (source_id) REFERENCES graph_nodes(id),
+      FOREIGN KEY (target_id) REFERENCES graph_nodes(id)
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_edges_source ON graph_edges(source_id);
+    CREATE INDEX IF NOT EXISTS idx_edges_target ON graph_edges(target_id);
+    CREATE INDEX IF NOT EXISTS idx_edges_relationship ON graph_edges(relationship);
+  `);
+
+  // Vector Search tables
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS vectors (
+      id TEXT PRIMARY KEY,
+      content TEXT NOT NULL,
+      embedding BLOB NOT NULL,
+      metadata_json TEXT,
+      created_at TEXT DEFAULT (datetime('now'))
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_vectors_created ON vectors(created_at DESC);
+  `);
+
+  // Trust & Provenance tables
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS sources (
+      id TEXT PRIMARY KEY,
+      kind TEXT NOT NULL,
+      reference TEXT NOT NULL,
+      label TEXT,
+      trust REAL DEFAULT 0.5,
+      created_at TEXT DEFAULT (datetime('now'))
+    );
+
+    CREATE TABLE IF NOT EXISTS belief_sources (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      belief_id TEXT NOT NULL,
+      source_id TEXT NOT NULL,
+      is_primary INTEGER DEFAULT 0,
+      created_at TEXT DEFAULT (datetime('now'))
+    );
+
+    CREATE TABLE IF NOT EXISTS contradictions (
+      id TEXT PRIMARY KEY,
+      belief_id_1 TEXT NOT NULL,
+      belief_id_2 TEXT NOT NULL,
+      resolved INTEGER DEFAULT 0,
+      resolution TEXT,
+      metadata_json TEXT,
+      created_at TEXT DEFAULT (datetime('now'))
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_belief_sources_belief ON belief_sources(belief_id);
+    CREATE INDEX IF NOT EXISTS idx_contradictions_belief1 ON contradictions(belief_id_1);
+    CREATE INDEX IF NOT EXISTS idx_contradictions_belief2 ON contradictions(belief_id_2);
+  `);
+
+  // Working Memory tables
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS working_memory (
+      id TEXT PRIMARY KEY,
+      type TEXT NOT NULL,
+      content TEXT NOT NULL,
+      priority INTEGER DEFAULT 5,
+      ttl_seconds INTEGER DEFAULT 300,
+      created_at TEXT NOT NULL,
+      expires_at TEXT NOT NULL,
+      metadata_json TEXT
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_working_memory_expires ON working_memory(expires_at);
+    CREATE INDEX IF NOT EXISTS idx_working_memory_type ON working_memory(type);
+  `);
+
+  // Drives tables
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS user_drives (
+      type TEXT PRIMARY KEY,
+      level REAL NOT NULL,
+      baseline_level REAL NOT NULL,
+      accumulation_rate REAL NOT NULL,
+      decay_rate REAL NOT NULL,
+      satisfaction_threshold REAL NOT NULL,
+      last_updated TEXT NOT NULL,
+      last_satisfied TEXT
+    );
+
+    CREATE TABLE IF NOT EXISTS drive_events (
+      id TEXT PRIMARY KEY,
+      drive_type TEXT NOT NULL,
+      event_type TEXT NOT NULL,
+      amount REAL NOT NULL,
+      level_before REAL NOT NULL,
+      level_after REAL NOT NULL,
+      trigger TEXT,
+      timestamp TEXT NOT NULL
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_drive_events_type ON drive_events(drive_type);
+    CREATE INDEX IF NOT EXISTS idx_drive_events_timestamp ON drive_events(timestamp);
+  `);
+}
+
+// =============================================================================
 // Main Runner
 // =============================================================================
 
@@ -402,6 +528,7 @@ async function runAllTests(): Promise<void> {
   console.log('═══════════════════════════════════════════════════════════════\n');
 
   const db = new Database(':memory:');
+  initializeSchema(db);
   const suites: TestSuite[] = [];
 
   // Run each test suite
