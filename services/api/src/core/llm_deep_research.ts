@@ -943,9 +943,9 @@ const isMainModule = process.argv[1] && (
 if (isMainModule) {
   const question = process.argv[2] || 'What is Server Driven UI (SDUI) and how do companies like Airbnb implement it?';
 
-  // Use Ollama with qwen3:4b for real LLM-powered research
-  console.log('Using Ollama with qwen3:4b for LLM-powered research...\n');
-  const llm = new OllamaLLMProvider('qwen3:4b');
+  // Use Ollama with qwen3:0.6b for real LLM-powered research (smaller model for limited memory)
+  console.log('Using Ollama with qwen3:0.6b for LLM-powered research...\n');
+  const llm = new OllamaLLMProvider('qwen3:0.6b');
   const engine = new LLMDeepResearch(llm, {
     maxSteps: 8,  // Limit steps for faster testing
     maxSourcesPerQuery: 3,
