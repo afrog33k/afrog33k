@@ -343,15 +343,52 @@ export class MetricCalculator {
       recommendations.push('System is performing well - continue current usage patterns');
     }
 
+    // Calculate combined prediction accuracy, only including metrics with data
+    // If one metric has no data (returns 0), only use the one that has data
+    const hasAttentionData = this.hasAttentionValidationData();
+    const hasInterestData = this.hasInterestValidationData();
+    let combinedPredictionAccuracy: number;
+    if (hasAttentionData && hasInterestData) {
+      combinedPredictionAccuracy = (predictionAccuracy + interestAccuracy) / 2;
+    } else if (hasAttentionData) {
+      combinedPredictionAccuracy = predictionAccuracy;
+    } else if (hasInterestData) {
+      combinedPredictionAccuracy = interestAccuracy;
+    } else {
+      combinedPredictionAccuracy = 0;
+    }
+
     return {
       overallScore,
-      predictionAccuracy: (predictionAccuracy + interestAccuracy) / 2,
+      predictionAccuracy: combinedPredictionAccuracy,
       interventionEffectiveness,
       learningRate,
       userSatisfaction,
       dataQuality,
       recommendations,
     };
+  }
+
+  /**
+   * Check if we have attention validation data
+   */
+  private hasAttentionValidationData(days: number = 7): boolean {
+    const result = this.db.prepare(`
+      SELECT COUNT(*) as count FROM eval_attention_validation
+      WHERE timestamp >= datetime('now', ?)
+    `).get(`-${days} days`) as { count: number };
+    return result.count > 0;
+  }
+
+  /**
+   * Check if we have interest validation data
+   */
+  private hasInterestValidationData(days: number = 7): boolean {
+    const result = this.db.prepare(`
+      SELECT COUNT(*) as count FROM eval_interest_validation
+      WHERE timestamp >= datetime('now', ?)
+    `).get(`-${days} days`) as { count: number };
+    return result.count > 0;
   }
 }
 
