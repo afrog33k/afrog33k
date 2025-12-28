@@ -744,6 +744,13 @@ export class LivingCore extends EventEmitter {
       // Update status
       this.db.prepare(`UPDATE rabbit_holes SET status = 'completed' WHERE id = ?`).run(rabbitHole.id);
 
+      // === UPDATE DRIVES ===
+      // Research satisfies curiosity and novelty drives
+      this.cognitive.updateDrivesFromActivity('research');
+      if (results.length > 0) {
+        this.cognitive.updateDrivesFromActivity('new_topic');
+      }
+
       this.emit('research_complete', { rabbitHole, results });
 
     } catch (error) {
