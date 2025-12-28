@@ -352,11 +352,26 @@ export class DeepResearchEngine extends EventEmitter {
           this.adapter.searchArxiv(query, 2),
         ]);
 
+        this.emit('search_results', {
+          query,
+          webCount: webResults.length,
+          repoCount: repoResults.length,
+          paperCount: paperResults.length,
+        });
+
         session.costSoFar += 3; // Count API calls
 
         // Process web results
         for (const result of webResults) {
           const finding = await this.processFinding(result, 'web', question, session);
+          if (finding) {
+            this.emit('finding_processed', {
+              source: result.title,
+              relevance: finding.relevanceScore,
+              threshold: this.config.minRelevanceThreshold,
+              accepted: finding.relevanceScore >= this.config.minRelevanceThreshold,
+            });
+          }
           if (finding && finding.relevanceScore >= this.config.minRelevanceThreshold) {
             session.findings.push(finding);
             this.emit('finding_added', { finding, session });
@@ -368,6 +383,14 @@ export class DeepResearchEngine extends EventEmitter {
           const readme = await this.adapter.fetchReadme(repo.fullName);
           if (readme) {
             const finding = await this.processRepoFinding(repo, readme, question, session);
+            if (finding) {
+              this.emit('finding_processed', {
+                source: repo.fullName,
+                relevance: finding.relevanceScore,
+                threshold: this.config.minRelevanceThreshold,
+                accepted: finding.relevanceScore >= this.config.minRelevanceThreshold,
+              });
+            }
             if (finding && finding.relevanceScore >= this.config.minRelevanceThreshold) {
               session.findings.push(finding);
               this.emit('finding_added', { finding, session });
@@ -829,6 +852,15 @@ if (isMainModule) {
 
   engine.on('iteration_started', ({ iteration }) => {
     console.log(`\n📍 Iteration ${iteration}`);
+  });
+
+  engine.on('search_results', ({ query, webCount, repoCount, paperCount }) => {
+    console.log(`   🔎 Search "${query.substring(0, 40)}...": web=${webCount} repo=${repoCount} paper=${paperCount}`);
+  });
+
+  engine.on('finding_processed', ({ source, relevance, threshold, accepted }) => {
+    const status = accepted ? '✓' : '✗';
+    console.log(`   ${status} ${source.substring(0, 40)}... relevance=${(relevance * 100).toFixed(0)}% (threshold=${(threshold * 100).toFixed(0)}%)`);
   });
 
   engine.on('finding_added', ({ finding }) => {
