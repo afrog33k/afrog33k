@@ -8,6 +8,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+
+**AGI Memory-Inspired Components** (from QuixiAI/agi-memory analysis):
+
+- **Working Memory** (`services/api/src/lib/working_memory.ts`)
+  - Temporary storage with auto-expiry (TTL-based)
+  - Priority-based retrieval
+  - Capacity management with eviction
+  - Focus tracking and pending actions queue
+  - ContextBuilder for LLM prompt hydration
+
+- **Drives System** (`services/api/src/lib/drives.ts`)
+  - ADHD-specific intrinsic motivations
+  - Drive types: focus, completion, novelty, rest, curiosity, connection, mastery
+  - Accumulation and decay mechanics
+  - Drive satisfiers with effectiveness scores
+  - Integration with attention state inference
+
+- **Memory Decay** (`services/api/src/lib/memory_decay.ts`)
+  - Biological forgetting curve (exponential decay)
+  - Access-based reinforcement
+  - Configurable half-lives per memory type
+  - Automatic deactivation of low-confidence rules
+
+- **Heartbeat Worker** (`services/api/src/lib/heartbeat.ts`)
+  - Periodic background processing (15-minute intervals)
+  - Energy budget system (limits actions per heartbeat)
+  - Quiet hours support
+  - Proactive nudge/reminder generation
+  - Integration with decay and drives
+
 - **Self-Evolution Loop** (`services/api/src/lib/self_evolution.ts`)
   - ExperienceStore: Record predictions and actual outcomes
   - PatternDistiller: Discover temporal, contextual, behavioral patterns
