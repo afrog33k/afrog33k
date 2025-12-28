@@ -835,9 +835,12 @@ export function simulateFocusedActivity(db: Database.Database, userId: string) {
 export function simulateScatteredActivity(db: Database.Database, userId: string) {
   const now = new Date();
 
-  // Many switches, short dwell times
-  for (let i = 0; i < 20; i++) {
-    const timestamp = new Date(now.getTime() - (15 - i * 0.75) * 60 * 1000).toISOString();
+  // Need > 8 switches/min over 15 min = 120+ switches
+  // Generate 150 switches (~10/min) to trigger scattered state
+  const eventCount = 150;
+  for (let i = 0; i < eventCount; i++) {
+    // Distribute events over the 15-minute window
+    const timestamp = new Date(now.getTime() - (15 - i * (15 / eventCount)) * 60 * 1000).toISOString();
     const apps = ['Chrome', 'Slack', 'VS Code', 'Mail', 'Terminal'];
 
     createTestActivityEvent(db, {
@@ -845,8 +848,8 @@ export function simulateScatteredActivity(db: Database.Database, userId: string)
       timestamp,
       eventType: i % 3 === 0 ? 'tab_switch' : 'app_switch',
       appName: apps[i % apps.length],
-      durationMs: 30 * 1000, // 30 sec dwell
-      metadata: { tabCount: 15 + i },
+      durationMs: 5 * 1000, // 5 sec dwell (rapid switching)
+      metadata: { tabCount: 15 + (i % 20) },
     });
   }
 }
@@ -855,9 +858,12 @@ export function simulateScatteredActivity(db: Database.Database, userId: string)
 export function simulateCrashedActivity(db: Database.Database, userId: string) {
   const now = new Date();
 
-  // Very high switching, no completions
-  for (let i = 0; i < 30; i++) {
-    const timestamp = new Date(now.getTime() - (15 - i * 0.5) * 60 * 1000).toISOString();
+  // Need > 15 switches/min over 15 min = 225+ switches
+  // Generate 300 switches (~20/min) to trigger crashed state (very high switching, no completions)
+  const eventCount = 300;
+  for (let i = 0; i < eventCount; i++) {
+    // Distribute events over the 15-minute window
+    const timestamp = new Date(now.getTime() - (15 - i * (15 / eventCount)) * 60 * 1000).toISOString();
     const apps = ['Chrome', 'Twitter', 'Reddit', 'YouTube', 'Slack'];
 
     createTestActivityEvent(db, {
@@ -866,8 +872,8 @@ export function simulateCrashedActivity(db: Database.Database, userId: string) {
       eventType: 'tab_switch',
       appName: apps[i % apps.length],
       url: `https://${apps[i % apps.length].toLowerCase()}.com/page${i}`,
-      durationMs: 10 * 1000, // 10 sec dwell
-      metadata: { tabCount: 25 + i },
+      durationMs: 3 * 1000, // 3 sec dwell (frantic switching)
+      metadata: { tabCount: 25 + (i % 30) },
     });
   }
 }
