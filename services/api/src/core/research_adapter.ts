@@ -2,9 +2,10 @@
  * Research Adapter - Actual research capabilities for the Living Core
  *
  * This module provides REAL research capabilities:
- * - Web search via DuckDuckGo (no API key needed)
+ * - Web search via SearXNG (no API key needed, uses public instances)
+ * - Brave Search (optional, needs BRAVE_API_KEY)
  * - GitHub repo search and analysis
- * - arXiv paper fetching
+ * - arXiv paper fetching (for academic topics only)
  *
  * This is NOT fake output - it actually fetches and analyzes.
  */
@@ -21,6 +22,7 @@ export interface SearchResult {
   url: string;
   snippet: string;
   source: string;
+  relevanceScore?: number;
 }
 
 export interface RepoInfo {
