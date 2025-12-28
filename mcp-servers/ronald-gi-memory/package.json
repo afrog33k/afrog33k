@@ -1,0 +1,29 @@
+{
+  "name": "@ronald-gi/memory-mcp",
+  "version": "0.1.0",
+  "description": "MCP server providing persistent memory for Claude",
+  "type": "module",
+  "main": "dist/index.js",
+  "bin": {
+    "ronald-gi-memory": "./dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "tsx src/index.ts"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.0",
+    "better-sqlite3": "^11.0.0"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.11",
+    "@types/node": "^22.0.0",
+    "tsx": "^4.0.0",
+    "typescript": "^5.0.0"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "keywords": ["mcp", "claude", "memory", "adhd", "ronald-gi"]
+}
