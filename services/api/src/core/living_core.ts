@@ -627,7 +627,7 @@ export class LivingCore extends EventEmitter {
   /**
    * Evaluate if a topic is worth researching
    */
-  private evaluateRabbitHoles(concepts: string[]): RabbitHole[] {
+  private evaluateRabbitHoles(concepts: string[], conceptNames: string[] = []): RabbitHole[] {
     const rabbitHoles: RabbitHole[] = [];
 
     // Get concept details
@@ -646,23 +646,35 @@ export class LivingCore extends EventEmitter {
 
       if (recentResearch) continue;
 
-      // Estimate value based on:
-      // - Access count (frequently accessed = more valuable)
-      // - Recency (recently mentioned = more relevant)
-      // - Connections (more connected = more important)
+      // === COGNITIVE VALUE EVALUATION ===
+      // Use BDI + Drives to evaluate topic value
+      const cognitiveEval = this.cognitive.evaluateTopicValue(concept.name, conceptNames);
+
+      // Base value from cognitive evaluation
+      let value = cognitiveEval.value;
+
+      // Add value from access patterns
       const connectionCount = this.db.prepare(`
         SELECT COUNT(*) as count FROM concept_edges WHERE from_id = ? OR to_id = ?
       `).get(concept.id, concept.id) as { count: number };
 
-      const value = Math.min(1, (
-        (concept.access_count / 10) * 0.3 +
-        (connectionCount.count / 5) * 0.3 +
-        0.4 // Base value for new concepts
+      value = Math.min(1, value + (
+        (concept.access_count / 20) * 0.1 +
+        (connectionCount.count / 10) * 0.1
       ));
 
       // Estimate cost based on topic complexity
-      // (simple heuristic: longer names = more complex)
       const cost = Math.min(1, concept.name.length / 30 + 0.2);
+
+      // Log reasoning for transparency
+      if (cognitiveEval.reasoning.length > 0) {
+        this.emit('rabbit_hole_evaluation', {
+          topic: concept.name,
+          value,
+          cost,
+          reasoning: cognitiveEval.reasoning,
+        });
+      }
 
       const rabbitHole: RabbitHole = {
         id: this.generateId(),
@@ -992,9 +1004,20 @@ ${hole.suggested_depth} | Value: ${(hole.estimated_value * 100).toFixed(0)}% | C
         // Extract concepts
         const extractedConcepts = this.extractConcepts(obs.content);
         const conceptIds = extractedConcepts.map(c => this.upsertConcept(c.name, c.type));
+        const conceptNames = extractedConcepts.map(c => c.name);
 
         // Link to observation
         this.linkObservationToConcepts(obs.id, conceptIds);
+
+        // === COGNITIVE INTEGRATION ===
+        // Infer beliefs from observation (interests, context)
+        this.cognitive.inferBeliefsFromObservation(obs.content, conceptNames);
+
+        // Infer desires from observation (goals, aspirations)
+        this.cognitive.inferDesiresFromObservation(obs.content, conceptNames);
+
+        // Record attention event (new observation = context switch)
+        this.cognitive.recordAttentionEvent('context_switch', obs.content.substring(0, 50));
 
         // Check for conflicts with existing beliefs
         const conflicts = this.checkConflicts(obs);
@@ -1008,8 +1031,8 @@ ${hole.suggested_depth} | Value: ${(hole.estimated_value * 100).toFixed(0)}% | C
           }
         }
 
-        // Evaluate rabbit holes
-        const rabbitHoles = this.evaluateRabbitHoles(conceptIds);
+        // Evaluate rabbit holes (now using cognitive value evaluation)
+        const rabbitHoles = this.evaluateRabbitHoles(conceptIds, conceptNames);
 
         // Research high-value holes
         for (const hole of rabbitHoles) {
