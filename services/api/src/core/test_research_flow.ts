@@ -60,7 +60,7 @@ async function testResearchFlow() {
 
   // Submit test observation that should trigger research
   console.log('\n📝 Submitting observation...\n');
-  core.addObservation(
+  core.observe(
     'thought',
     'I want to learn about Server Driven UI (SDUI) patterns and how companies like Airbnb implement them for mobile apps. Also interested in comparing with microfrontends.',
     { priority: 'high', trigger_research: true }
