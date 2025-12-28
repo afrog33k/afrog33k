@@ -800,3 +800,173 @@ Key patterns:
 When in doubt, refer here. When the vision seems unclear, read Part 1 again.
 
 The goal is simple: **Build a living research colleague, not a collection of tools.**
+
+---
+
+## Appendix A: Research Foundation (2025 Papers)
+
+### A.1 Papers Reviewed
+
+All papers from 2025 arXiv that inform Ronald-GI's design:
+
+#### Self-Improving Agents
+| Paper | arXiv | Key Insight |
+|-------|-------|-------------|
+| Self-Improving Coding Agent | 2504.15228 | Agents can edit themselves: 17% → 53% on SWE-Bench |
+| SEAgent | 2508.04700 | Trial-and-error evolution: +23.2% success rate |
+| Self-Play SWE-RL | 2512.18552 | RL in self-play: +10.4 points on SWE-bench |
+| SAGE | 2512.17102 | Self-Aware Generative Embodied agent |
+| Agent0 | 2511.16043 | Natural language agent abstraction |
+
+#### Memory Systems
+| Paper | arXiv | Key Insight |
+|-------|-------|-------------|
+| Memory in Age of AI Agents | 2512.13564 | Traditional taxonomies insufficient; memory is core capability |
+| PersonaMem-v2 | 2512.06688 | Frontier LLMs: only 37-48% on implicit personalization |
+| Personalized Long-term Interactions | 2510.07925 | Persistent memory + dynamic coordination + self-validation |
+
+#### Persona & Identity
+| Paper | arXiv | Key Insight |
+|-------|-------|-------------|
+| ID-RAG | 2509.25299 | Identity as knowledge graph "Chronicles" |
+| Sophia | 2512.18202 | "System 3" for narrative identity, autobiographical memory |
+| PersonaAgent | 2506.06254 | First personalized LLM agent framework |
+
+#### ADHD & Neurodivergent Support
+| Paper | arXiv | Key Insight |
+|-------|-------|-------------|
+| Neurodivergent-Aware Productivity | 2507.06864 | **PRIMARY FOUNDATION** - Attention states, nudges, body doubling |
+
+#### Proactive Assistance
+| Paper | arXiv | Key Insight |
+|-------|-------|-------------|
+| ProMemAssist | 2507.21378 | Working memory modeling for proactive timing |
+| YETI | 2501.09355 | Proactive interventions, detect/correct before completion |
+| AI4Service | 2510.14359 | "Know When to intervene" + "Know How to serve" |
+| ProPerSim | 2509.21730 | **Without personalization, proactive fails** |
+
+#### BDI Agents
+| Paper | arXiv | Key Insight |
+|-------|-------|-------------|
+| BDI Ontology | 2511.17162 | Formal BDI + LLM via Logic Augmented Generation |
+| Integrating ML into BDI | 2510.20641 | Text beliefs + LLM processing is emerging trend |
+
+### A.2 Experiment Results
+
+Validation experiments proving Ronald-GI capabilities:
+
+| Experiment | File | Metric | Result | SOTA Comparison |
+|------------|------|--------|--------|-----------------|
+| Long-horizon Learning | `long_horizon_learning.ts` | Preference accuracy | 50% | PersonaMem-v2: 37-48% |
+| Persona Emergence | `persona_with_embeddings.ts` | Stability under 100:1 noise | 50% | Not tested elsewhere |
+| World Model Coherence | `world_model_coherence.ts` | Multi-hop reasoning | 100% | N/A |
+| High-Bandwidth Comm | `high_bandwidth_communication.ts` | One-word intent | 81% | Not studied |
+| "My Way" Learning | `my_way_learning.ts` | Style consistency | 83% (+186%) | Stateless: 29% |
+| Antimemory | `antimemory.ts` | Unexpected-but-relevant | 56% | Similarity: 0% |
+
+### A.3 Six Research Frontiers
+
+Ronald-GI uniquely combines all six:
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    RONALD-GI RESEARCH FOUNDATION                 │
+├─────────────────────────────────────────────────────────────────┤
+│ 1. Self-Improving Agents     │ SEAgent, SAGE                    │
+│    → self_evolution.ts       │ Experience → Pattern → Rule      │
+├──────────────────────────────┼──────────────────────────────────┤
+│ 2. Persistent Memory         │ PersonaMem-v2, Memory Survey     │
+│    → memory_layer.ts         │ 5-layer: work/epis/sem/proc/strat│
+├──────────────────────────────┼──────────────────────────────────┤
+│ 3. Persona Coherence         │ ID-RAG, Sophia, PersonaAgent     │
+│    → bdi_model.ts            │ BDI for identity continuity      │
+├──────────────────────────────┼──────────────────────────────────┤
+│ 4. ADHD-Aware Support        │ arXiv:2507.06864                 │
+│    → attention_inference.ts  │ Attention states + drives        │
+├──────────────────────────────┼──────────────────────────────────┤
+│ 5. Proactive Assistance      │ ProMemAssist, YETI               │
+│    → anticipation_engine.ts  │ Antimemory + value/cost          │
+├──────────────────────────────┼──────────────────────────────────┤
+│ 6. BDI Reasoning             │ BDI Ontology, ML+BDI Survey      │
+│    → bdi_model.ts            │ Beliefs/Desires/Intentions       │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### A.4 Quantified Value
+
+| Metric | Before | After | Improvement |
+|--------|--------|-------|-------------|
+| Style consistency | 29% (stateless) | 83% | +186% |
+| Antimemory hits | 0% (similarity) | 56% | +56% absolute |
+| Preference learning | 17% (baseline) | 50% | +194% |
+| Intent recognition | N/A | 81% | First measurement |
+| Multi-hop reasoning | N/A | 100% | First measurement |
+| Persona stability | Not tested | 50% | First under 100:1 noise |
+
+---
+
+## Appendix B: Current Research Queue
+
+### B.1 Pending Topics (from observations)
+
+Topics that have entered the observation stream but haven't been fully researched:
+
+| Topic | Source | Status | Priority |
+|-------|--------|--------|----------|
+| SDUI (Server-Driven UI) | thought | Concepts extracted | HIGH |
+| Micro-Frontends | thought | Concepts extracted | HIGH |
+| HMR (Hot Module Replacement) | thought | Concepts extracted | HIGH |
+| Module Federation | thought | Related concept | MEDIUM |
+| ADHD + SDUI connection | antimemory | Insight surfaced | HIGH |
+| HMR state preservation | antimemory | Insight surfaced | HIGH |
+
+### B.2 Research Questions
+
+Questions generated but not yet answered:
+
+1. **SDUI + BDI Integration**: Can UI rendering be driven by user mental state?
+2. **Module Federation for MCP**: Can MCP servers expose UI components dynamically?
+3. **HMR for Ronald-GI Dashboard**: How to preserve ADHD user context during dev?
+4. **SDUI Schema Design**: What component contracts for server-driven rendering?
+
+### B.3 Antimemory Connections Found
+
+Unexpected-but-relevant insights surfaced:
+
+| From | To | Via | Novelty |
+|------|----|-----|---------|
+| HMR | ADHD | state-preservation → no-restart → focus-maintained | 90% |
+| SDUI | ADHD | no-deploy → fast-iteration → reduced-context-switch | 85% |
+| Micro-Frontends | BDI | team-autonomy → parallel-development → intention-mapping | 75% |
+| React | memory | component-state → persistence → recall | 60% |
+
+---
+
+## Appendix C: Related Documents
+
+| Document | Location | Purpose |
+|----------|----------|---------|
+| SOTA Comparison | `research/SOTA_COMPARISON.md` | Full paper analysis with code examples |
+| Experiments | `research/experiments/*.ts` | Runnable validation experiments |
+| Observe Script | `research/observe_and_research.ts` | Demo of observation pipeline |
+
+---
+
+## Appendix D: AGI Memory Deep Dive
+
+Files cloned from QuixiAI/agi-memory for reference:
+
+| File | Lines | Key Functions |
+|------|-------|---------------|
+| `worker.py` | 1279 | HeartbeatWorker, MaintenanceWorker, heartbeat loop |
+| `cognitive_memory_api.py` | 1027 | hydrate(), remember(), recall(), CognitiveMemory |
+| `schema.sql` | 2000+ | Full PostgreSQL schema with vectors, graphs, identity |
+
+### Key Patterns to Adopt
+
+1. **Database = Brain**: All state in SQLite, not in-memory objects
+2. **hydrate()**: Enrich every prompt with memories, identity, worldview, drives
+3. **Heartbeat**: Periodic autonomous loop, not event-driven
+4. **Action execution**: Real operations, not text generation
+5. **Two workers**: Conscious (heartbeat) + Subconscious (maintenance)
+6. **Energy budget**: Actions have costs, prevent runaway loops
