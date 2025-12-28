@@ -653,42 +653,203 @@ export class LLMDeepResearch extends EventEmitter {
 // MOCK LLM PROVIDER (for testing without API)
 // ============================================================================
 
-export class MockLLMProvider implements LLMProvider {
-  name = 'mock';
+/**
+ * Smart rule-based LLM provider that works without API
+ * Uses heuristics to simulate intelligent research planning
+ */
+export class SmartRuleBasedProvider implements LLMProvider {
+  name = 'smart-rules';
+  private actionHistory: string[] = [];
+  private iteration = 0;
 
   async complete(prompt: string): Promise<string> {
-    // Simple rule-based responses for testing
-    if (prompt.includes('clarify')) {
+    // Extract context from prompt
+    const questionMatch = prompt.match(/ORIGINAL QUESTION: (.+)/);
+    const question = questionMatch ? questionMatch[1] : '';
+
+    const synthesisMatch = prompt.match(/CURRENT SYNTHESIS:\n([\s\S]*?)(?=LAST STEP:|$)/);
+    const currentSynthesis = synthesisMatch ? synthesisMatch[1].trim() : '';
+
+    const openQuestionsMatch = prompt.match(/OPEN QUESTIONS: (.+)/);
+    const openQuestions = openQuestionsMatch ? openQuestionsMatch[1].split(', ') : [];
+
+    const iterationMatch = prompt.match(/ITERATION: (\d+)/);
+    this.iteration = iterationMatch ? parseInt(iterationMatch[1]) : 0;
+
+    const confidenceMatch = prompt.match(/CONFIDENCE: (\d+)%/);
+    const confidence = confidenceMatch ? parseInt(confidenceMatch[1]) : 0;
+
+    const citationsMatch = prompt.match(/CITATIONS SO FAR: (\d+)/);
+    const citationCount = citationsMatch ? parseInt(citationsMatch[1]) : 0;
+
+    // Clarification prompt
+    if (prompt.includes('clarify it and break it into sub-questions')) {
+      const topic = question || prompt.match(/QUESTION: (.+)/)?.[1] || 'the topic';
       return JSON.stringify({
-        clarified: 'Clarified question',
-        subQuestions: ['What is it?', 'How does it work?', 'What are examples?'],
-        scope: ['Main topic'],
-        outOfScope: ['Unrelated areas'],
+        clarified: topic,
+        subQuestions: [
+          `What is ${topic} and what problem does it solve?`,
+          `What are the key components and architecture of ${topic}?`,
+          `What are real-world examples and implementations of ${topic}?`,
+          `What are the advantages and disadvantages of ${topic}?`,
+          `How does ${topic} compare to alternatives?`,
+        ],
+        scope: [topic, 'implementation patterns', 'use cases', 'best practices'],
+        outOfScope: ['unrelated technologies', 'historical context beyond 2020'],
       });
     }
 
+    // Action planning prompt
     if (prompt.includes('decide what to do next')) {
-      return JSON.stringify({
-        thought: 'I should search for more information',
-        action: { type: 'search_web', query: 'relevant search query' },
-      });
+      return this.planNextAction(question, currentSynthesis, openQuestions, confidence, citationCount);
     }
 
-    if (prompt.includes('synthesizing')) {
-      return 'Updated synthesis incorporating new findings. Key points: ...';
+    // Synthesis prompt
+    if (prompt.includes('synthesizing research findings')) {
+      return this.synthesizeFindings(prompt, currentSynthesis);
     }
 
+    // Report generation
     if (prompt.includes('Generate a comprehensive research report')) {
+      return this.generateReport(prompt, currentSynthesis);
+    }
+
+    // Citation verification
+    if (prompt.includes('Verify if this source supports')) {
       return JSON.stringify({
-        executiveSummary: 'Summary of research findings',
-        sections: [{ title: 'Overview', content: 'Content', citations: [] }],
-        methodology: 'Web research',
-        limitations: ['Limited sources'],
-        recommendations: ['Continue research'],
+        verified: true,
+        explanation: 'Source content appears relevant to the claim',
+        actualSupport: 'The source discusses related concepts',
       });
     }
 
     return '{}';
+  }
+
+  private planNextAction(
+    question: string,
+    synthesis: string,
+    openQuestions: string[],
+    confidence: number,
+    citationCount: number
+  ): string {
+    // Decide action based on research state
+    let action: ResearchAction;
+    let thought: string;
+
+    if (this.iteration === 1) {
+      // First step: search for the main question
+      thought = `Starting research on "${question}". Will search the web first to get an overview.`;
+      action = { type: 'search_web', query: question };
+      this.actionHistory.push('search_web:' + question);
+    } else if (this.iteration === 2) {
+      // Second step: search GitHub for implementations
+      thought = 'Now searching for code implementations and repositories to understand practical applications.';
+      action = { type: 'search_repos', query: question };
+      this.actionHistory.push('search_repos:' + question);
+    } else if (openQuestions.length > 0 && this.iteration <= 5) {
+      // Address open questions
+      const nextQ = openQuestions[0].replace(/\?$/, '');
+      thought = `Investigating open question: "${nextQ}"`;
+      action = { type: 'search_web', query: nextQ };
+      this.actionHistory.push('search_web:' + nextQ);
+    } else if (citationCount >= 5 && !this.actionHistory.includes('synthesize')) {
+      // Have enough sources, synthesize
+      thought = 'Have gathered sufficient sources. Consolidating findings into coherent synthesis.';
+      action = { type: 'synthesize', focus: 'consolidate all findings' };
+      this.actionHistory.push('synthesize');
+    } else if (confidence >= 50 || this.iteration >= 8) {
+      // Ready to conclude
+      thought = `Confidence is ${confidence}% with ${citationCount} citations. Ready to conclude research.`;
+      action = { type: 'conclude', summary: 'Research complete with comprehensive findings.' };
+    } else {
+      // Continue exploring
+      const searchTerms = [
+        question + ' tutorial',
+        question + ' best practices',
+        question + ' architecture',
+        question + ' implementation guide',
+      ];
+      const termIndex = (this.iteration - 3) % searchTerms.length;
+      thought = `Continuing exploration with related search: "${searchTerms[termIndex]}"`;
+      action = { type: 'search_web', query: searchTerms[termIndex] };
+      this.actionHistory.push('search_web:' + searchTerms[termIndex]);
+    }
+
+    return JSON.stringify({ thought, action });
+  }
+
+  private synthesizeFindings(prompt: string, currentSynthesis: string): string {
+    const newInfoMatch = prompt.match(/NEW INFORMATION:\n([\s\S]*?)$/);
+    const newInfo = newInfoMatch ? newInfoMatch[1].trim() : '';
+
+    // Extract key points from new info
+    const sentences = newInfo.split(/[.!?]+/).filter(s => s.trim().length > 20);
+    const keyPoints = sentences.slice(0, 5).map(s => s.trim());
+
+    const synthesis = `${currentSynthesis}
+
+## New Findings
+
+${keyPoints.map(p => `- ${p}`).join('\n')}
+
+## Updated Understanding
+
+Based on the gathered sources, we now have a clearer picture of the topic. The research has uncovered:
+1. Key definitions and concepts from authoritative sources
+2. Implementation patterns from real-world projects
+3. Best practices recommended by practitioners
+
+More investigation may be needed to fully address all sub-questions.`;
+
+    return synthesis;
+  }
+
+  private generateReport(prompt: string, synthesis: string): string {
+    const questionMatch = prompt.match(/QUESTION: (.+)/);
+    const question = questionMatch ? questionMatch[1] : 'Research topic';
+
+    return JSON.stringify({
+      executiveSummary: `This research investigated "${question}" through systematic web and repository analysis. Key findings include identification of major frameworks, implementation patterns, and best practices. ${synthesis.substring(0, 300)}`,
+      sections: [
+        {
+          title: 'Overview',
+          content: 'This section provides an overview of the topic based on gathered sources.',
+          citations: ['cite-1', 'cite-2'],
+        },
+        {
+          title: 'Implementation Patterns',
+          content: 'Analysis of how the technology is implemented in practice, based on GitHub repositories and technical articles.',
+          citations: ['cite-3', 'cite-4'],
+        },
+        {
+          title: 'Best Practices',
+          content: 'Recommended approaches based on industry experience and documentation.',
+          citations: ['cite-5'],
+        },
+      ],
+      methodology: 'Iterative web research using search engines and GitHub, with synthesis at each step',
+      limitations: [
+        'Limited to publicly available sources',
+        'No access to proprietary implementations',
+        'Synthesis performed without LLM verification',
+      ],
+      recommendations: [
+        'Review the top-starred repositories for implementation examples',
+        'Consider the trade-offs discussed in the analysis',
+        'Test with a small proof-of-concept before full adoption',
+      ],
+    });
+  }
+}
+
+export class MockLLMProvider implements LLMProvider {
+  name = 'mock';
+
+  async complete(prompt: string): Promise<string> {
+    // Delegate to smart rule-based provider
+    const smart = new SmartRuleBasedProvider();
+    return smart.complete(prompt);
   }
 }
 
