@@ -825,19 +825,25 @@ export class LivingCore extends EventEmitter {
   private generateCards(): Card[] {
     const cards: Card[] = [];
 
-    // Get completed rabbit holes with results that haven't been carded
+    // Get completed rabbit holes with results that haven't been carded yet
+    // Mark them as 'carded' after generating to prevent re-generation
     const completedHoles = this.db.prepare(`
       SELECT rh.*, GROUP_CONCAT(rr.id) as result_ids
       FROM rabbit_holes rh
       LEFT JOIN research_results rr ON rh.id = rr.rabbit_hole_id
       WHERE rh.status = 'completed'
-      AND NOT EXISTS (
-        SELECT 1 FROM cards c WHERE c.evidence LIKE '%' || rh.id || '%'
-      )
       GROUP BY rh.id
     `).all() as any[];
 
-    for (const hole of completedHoles) {
+    // Filter out already carded holes
+    const uncardedHoles = completedHoles.filter(hole => {
+      const existing = this.db.prepare(`
+        SELECT 1 FROM cards WHERE evidence LIKE ?
+      `).get(`%${hole.id}%`);
+      return !existing;
+    });
+
+    for (const hole of uncardedHoles) {
       if (!hole.result_ids) continue; // No results, no card
 
       const results = this.db.prepare(`
@@ -1111,11 +1117,11 @@ ${hole.suggested_depth} | Value: ${(hole.estimated_value * 100).toFixed(0)}% | C
   }
 
   /**
-   * Get unsurfaced cards
+   * Get recent surfaced cards
    */
   getCards(): Card[] {
     const rows = this.db.prepare(`
-      SELECT * FROM cards WHERE surfaced = 1 ORDER BY created_at DESC LIMIT 10
+      SELECT * FROM cards ORDER BY created_at DESC LIMIT 10
     `).all() as any[];
 
     return rows.map(row => ({
