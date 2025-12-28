@@ -1004,6 +1004,31 @@ ${hole.suggested_depth} | Value: ${(hole.estimated_value * 100).toFixed(0)}% | C
     this.emit('heartbeat_start', { timestamp: beatStart });
 
     try {
+      // === CHECK ATTENTION STATE ===
+      const attention = this.cognitive.getAttentionState();
+      this.emit('attention_state', attention);
+
+      // Adjust behavior based on attention state
+      let maxResearchThisHeartbeat = this.config.maxConcurrentResearch;
+      if (attention.state === 'crashed' || attention.state === 'scattered') {
+        // Reduce research load when attention is poor
+        maxResearchThisHeartbeat = 1;
+        this.emit('attention_adjustment', {
+          state: attention.state,
+          adjustment: 'reduced_research',
+          reason: 'Attention state suggests lighter cognitive load',
+        });
+      }
+
+      // === CHECK INFERRED NEEDS ===
+      const needs = this.cognitive.inferNeeds();
+      if (needs.length > 0) {
+        const urgentNeeds = needs.filter(n => n.urgency === 'immediate');
+        if (urgentNeeds.length > 0) {
+          this.emit('urgent_needs', { needs: urgentNeeds });
+        }
+      }
+
       // 1. Process unprocessed observations
       const observations = this.getUnprocessedObservations();
 
@@ -1050,8 +1075,8 @@ ${hole.suggested_depth} | Value: ${(hole.estimated_value * 100).toFixed(0)}% | C
               VALUES (?, ?, ?, ?, ?, ?)
             `).run(hole.id, hole.topic, JSON.stringify(hole.concepts), hole.estimatedValue, hole.estimatedCost, hole.suggestedDepth);
 
-            // Do research (limited by max concurrent)
-            if (researchCompleted < this.config.maxConcurrentResearch) {
+            // Do research (limited by max concurrent, adjusted for attention state)
+            if (researchCompleted < maxResearchThisHeartbeat) {
               await this.research(hole);
               researchCompleted++;
             }
