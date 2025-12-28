@@ -53,71 +53,126 @@ export interface PaperInfo {
 
 export class ResearchAdapter extends EventEmitter {
   private userAgent = 'Ronald-GI/1.0 (Research Assistant)';
+  private braveApiKey: string | null = process.env.BRAVE_API_KEY || null;
+
+  // SearXNG public instances (fallback chain)
+  private searxngInstances = [
+    'https://searx.be',
+    'https://search.sapti.me',
+    'https://searx.tiekoetter.com',
+    'https://search.ononoki.org',
+  ];
 
   constructor() {
     super();
   }
 
   // ==========================================================================
-  // WEB SEARCH (DuckDuckGo HTML scraping - no API needed)
+  // WEB SEARCH (SearXNG with Brave fallback)
   // ==========================================================================
 
   async webSearch(query: string, maxResults: number = 5): Promise<SearchResult[]> {
+    // Try Brave Search first if API key is available
+    if (this.braveApiKey) {
+      const braveResults = await this.braveSearch(query, maxResults);
+      if (braveResults.length > 0) {
+        return braveResults;
+      }
+    }
+
+    // Fall back to SearXNG
+    return this.searxngSearch(query, maxResults);
+  }
+
+  /**
+   * Search using Brave Search API (requires BRAVE_API_KEY)
+   */
+  private async braveSearch(query: string, maxResults: number): Promise<SearchResult[]> {
     const results: SearchResult[] = [];
 
     try {
-      // Use DuckDuckGo HTML search (no API key needed)
       const encodedQuery = encodeURIComponent(query);
-      const url = `https://html.duckduckgo.com/html/?q=${encodedQuery}`;
+      const url = `https://api.search.brave.com/res/v1/web/search?q=${encodedQuery}&count=${maxResults}`;
 
       const response = await fetch(url, {
         headers: {
-          'User-Agent': this.userAgent,
+          'Accept': 'application/json',
+          'X-Subscription-Token': this.braveApiKey!,
         },
       });
 
       if (!response.ok) {
-        throw new Error(`Search failed: ${response.status}`);
+        throw new Error(`Brave search failed: ${response.status}`);
       }
 
-      const html = await response.text();
+      const data = await response.json();
 
-      // Parse results from HTML
-      const resultRegex = /<a class="result__a" href="([^"]+)"[^>]*>([^<]+)<\/a>[\s\S]*?<a class="result__snippet"[^>]*>([^<]+)<\/a>/g;
-      let match;
-      let count = 0;
-
-      while ((match = resultRegex.exec(html)) !== null && count < maxResults) {
+      for (const result of data.web?.results || []) {
         results.push({
-          id: `web-${Date.now()}-${count}`,
-          url: match[1],
-          title: this.decodeHtml(match[2]),
-          snippet: this.decodeHtml(match[3]),
-          source: 'duckduckgo',
+          id: `brave-${Date.now()}-${results.length}`,
+          url: result.url,
+          title: result.title,
+          snippet: result.description || '',
+          source: 'brave',
         });
-        count++;
       }
 
-      // Alternative parsing if regex didn't work
-      if (results.length === 0) {
-        // Try simpler pattern
-        const simpleRegex = /class="result__url"[^>]*>([^<]+)<[\s\S]*?class="result__title"[^>]*>[\s\S]*?<a[^>]*href="([^"]+)"[^>]*>([^<]+)</g;
-        while ((match = simpleRegex.exec(html)) !== null && count < maxResults) {
-          results.push({
-            id: `web-${Date.now()}-${count}`,
-            url: match[2],
-            title: this.decodeHtml(match[3]),
-            snippet: '',
-            source: 'duckduckgo',
-          });
-          count++;
-        }
-      }
-
-      this.emit('web_search_complete', { query, results });
+      this.emit('web_search_complete', { query, results, source: 'brave' });
 
     } catch (error) {
-      this.emit('web_search_error', { query, error });
+      this.emit('web_search_error', { query, error, source: 'brave' });
+    }
+
+    return results;
+  }
+
+  /**
+   * Search using SearXNG (no API key needed)
+   */
+  private async searxngSearch(query: string, maxResults: number): Promise<SearchResult[]> {
+    const results: SearchResult[] = [];
+
+    for (const instance of this.searxngInstances) {
+      try {
+        const encodedQuery = encodeURIComponent(query);
+        const url = `${instance}/search?q=${encodedQuery}&format=json&categories=general`;
+
+        const response = await fetch(url, {
+          headers: {
+            'User-Agent': this.userAgent,
+            'Accept': 'application/json',
+          },
+        });
+
+        if (!response.ok) {
+          continue; // Try next instance
+        }
+
+        const data = await response.json();
+
+        for (const result of (data.results || []).slice(0, maxResults)) {
+          results.push({
+            id: `searxng-${Date.now()}-${results.length}`,
+            url: result.url,
+            title: result.title,
+            snippet: result.content || '',
+            source: `searxng:${new URL(instance).host}`,
+          });
+        }
+
+        if (results.length > 0) {
+          this.emit('web_search_complete', { query, results, source: instance });
+          break; // Success, don't try other instances
+        }
+
+      } catch (error) {
+        // Try next instance
+        continue;
+      }
+    }
+
+    if (results.length === 0) {
+      this.emit('web_search_error', { query, error: 'All SearXNG instances failed' });
     }
 
     return results;
@@ -203,10 +258,42 @@ export class ResearchAdapter extends EventEmitter {
   }
 
   // ==========================================================================
-  // ARXIV SEARCH
+  // ARXIV SEARCH (for academic topics only)
   // ==========================================================================
 
+  /**
+   * Keywords that indicate an academic/research topic suitable for arXiv
+   */
+  private academicKeywords = [
+    'machine learning', 'ml', 'deep learning', 'neural network', 'transformer',
+    'llm', 'large language model', 'nlp', 'natural language',
+    'computer vision', 'reinforcement learning', 'rl',
+    'algorithm', 'optimization', 'theoretical',
+    'quantum', 'physics', 'mathematics', 'biology', 'chemistry',
+    'research', 'paper', 'study', 'analysis', 'framework',
+    'model', 'dataset', 'benchmark', 'evaluation',
+    'autonomous', 'agent', 'reasoning', 'cognition', 'cognitive',
+    'attention mechanism', 'embedding', 'representation learning',
+  ];
+
+  /**
+   * Check if a topic is suitable for arXiv search
+   */
+  isAcademicTopic(query: string): boolean {
+    const lower = query.toLowerCase();
+    return this.academicKeywords.some(keyword => lower.includes(keyword));
+  }
+
+  /**
+   * Search arXiv - returns empty if topic is not academic
+   */
   async searchArxiv(query: string, maxResults: number = 5): Promise<PaperInfo[]> {
+    // Skip arXiv for non-academic topics (like "SDUI", "HMR", etc.)
+    if (!this.isAcademicTopic(query)) {
+      this.emit('arxiv_search_skipped', { query, reason: 'Not an academic topic' });
+      return [];
+    }
+
     const results: PaperInfo[] = [];
 
     try {
