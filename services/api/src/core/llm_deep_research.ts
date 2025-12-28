@@ -848,6 +848,157 @@ export class LLMDeepResearch extends EventEmitter {
   }
 
   // ==========================================================================
+  // PARALLEL EXPLORATION (multi-agent concurrent research)
+  // ==========================================================================
+
+  /**
+   * Research with parallel exploration of sub-questions
+   * Based on WebSeer and Tongyi parallel architecture
+   */
+  async researchParallel(question: string): Promise<ResearchReport> {
+    if (!this.config.enableParallelMode) {
+      return this.research(question);
+    }
+
+    const startTime = Date.now();
+    this.emit('parallel_research_started', { question, agents: this.config.parallelAgents });
+
+    // Step 1: Clarify and decompose question
+    const clarifiedQuestion = await this.clarifyQuestion(question);
+    const subQuestions = clarifiedQuestion.subQuestions.slice(0, this.config.parallelAgents);
+
+    // Step 2: Create parallel workers for sub-questions
+    const workerPromises = subQuestions.map(async (subQ, idx) => {
+      this.emit('parallel_worker_started', { index: idx, question: subQ });
+
+      // Each worker gets limited steps
+      const workerConfig = {
+        ...this.config,
+        maxSteps: Math.floor(this.config.maxSteps / this.config.parallelAgents),
+        enableParallelMode: false, // Prevent recursive parallelization
+      };
+
+      const worker = new LLMDeepResearch(this.llm, workerConfig);
+
+      // Forward events from worker
+      worker.on('step_completed', (data) => {
+        this.emit('parallel_step_completed', { workerId: idx, ...data });
+      });
+
+      try {
+        const report = await worker.research(subQ);
+        return { index: idx, success: true, report };
+      } catch (error) {
+        return { index: idx, success: false, error: String(error) };
+      }
+    });
+
+    // Step 3: Wait for all workers
+    const results = await Promise.all(workerPromises);
+    this.emit('parallel_workers_completed', { results: results.map(r => ({ index: r.index, success: r.success })) });
+
+    // Step 4: Merge findings
+    const mergedWorkspace = this.mergeParallelResults(question, clarifiedQuestion, results);
+
+    // Step 5: Synthesize merged findings
+    const finalSynthesis = await this.synthesizeMergedFindings(mergedWorkspace);
+    mergedWorkspace.synthesis = finalSynthesis;
+
+    // Step 6: Cross-validate merged claims
+    if (this.config.enableCrossValidation) {
+      await this.crossValidateClaims(mergedWorkspace);
+    }
+
+    // Step 7: Generate unified report
+    const report = await this.generateReport(mergedWorkspace, []);
+
+    report.metadata = {
+      stepsExecuted: results.reduce((sum, r) => sum + (r.success && r.report ? r.report.metadata.stepsExecuted : 0), 0),
+      sourcesConsulted: mergedWorkspace.citations.length,
+      timeElapsed: Date.now() - startTime,
+      tokensUsed: results.reduce((sum, r) => sum + (r.success && r.report ? r.report.metadata.tokensUsed : 0), 0),
+    };
+
+    this.emit('parallel_research_completed', { report });
+    return report;
+  }
+
+  private mergeParallelResults(
+    originalQuestion: string,
+    clarifiedQuestion: ResearchQuestion,
+    results: Array<{ index: number; success: boolean; report?: ResearchReport; error?: string }>
+  ): Workspace {
+    const mergedCitations: Citation[] = [];
+    const answeredQuestions: string[] = [];
+    const openQuestions: string[] = [];
+    let combinedSynthesis = '';
+
+    for (const result of results) {
+      if (result.success && result.report) {
+        // Merge citations (with deduplication)
+        for (const citation of result.report.citations) {
+          const exists = mergedCitations.some(c => c.url === citation.url);
+          if (!exists) {
+            mergedCitations.push(citation);
+          }
+        }
+
+        // Merge answered questions
+        const subQ = clarifiedQuestion.subQuestions[result.index];
+        if (result.report.confidence > 0.5) {
+          answeredQuestions.push(subQ);
+        } else {
+          openQuestions.push(subQ);
+        }
+
+        // Append to combined synthesis
+        combinedSynthesis += `\n\n## ${subQ}\n${result.report.executiveSummary}`;
+      } else {
+        // Mark failed sub-question as open
+        const subQ = clarifiedQuestion.subQuestions[result.index];
+        openQuestions.push(subQ);
+      }
+    }
+
+    // Rank citations by authority
+    const rankedCitations = this.rankCitationsByAuthority(mergedCitations);
+
+    return {
+      question: { ...clarifiedQuestion, original: originalQuestion },
+      synthesis: combinedSynthesis,
+      lastStep: null,
+      citations: rankedCitations,
+      openQuestions,
+      answeredQuestions,
+      confidence: answeredQuestions.length / Math.max(1, clarifiedQuestion.subQuestions.length),
+      iteration: 0,
+    };
+  }
+
+  private async synthesizeMergedFindings(workspace: Workspace): Promise<string> {
+    const prompt = `You are synthesizing findings from multiple parallel research streams.
+
+ORIGINAL QUESTION: ${workspace.question.original}
+
+PARALLEL FINDINGS:
+${workspace.synthesis}
+
+SOURCES GATHERED: ${workspace.citations.length}
+QUESTIONS ANSWERED: ${workspace.answeredQuestions.join(', ')}
+QUESTIONS REMAINING: ${workspace.openQuestions.join(', ')}
+
+Create a unified synthesis that:
+1. Integrates insights from all research streams
+2. Identifies common themes and patterns
+3. Notes any contradictions or gaps
+4. Provides a coherent narrative answering the original question
+
+Write a comprehensive synthesis (500-800 words).`;
+
+    return this.llm.complete(prompt, { maxTokens: 1500 });
+  }
+
+  // ==========================================================================
   // CITATION VERIFICATION
   // ==========================================================================
 
