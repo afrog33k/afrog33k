@@ -17,6 +17,7 @@
  */
 
 import { EventEmitter } from 'events';
+import { fileURLToPath } from 'url';
 import { ResearchAdapter, SearchResult, RepoInfo, PaperInfo } from './research_adapter';
 
 // ============================================================================
@@ -797,7 +798,11 @@ ${synthesis.openQuestions.slice(0, 5).map(q => `- ❓ ${q}`).join('\n') || 'All 
 // CLI TEST
 // ============================================================================
 
-if (require.main === module) {
+const isMainModule = process.argv[1] && (
+  process.argv[1] === fileURLToPath(import.meta.url) ||
+  process.argv[1].includes('deep_research')
+);
+if (isMainModule) {
   const engine = new DeepResearchEngine({
     maxIterations: 3,
     maxSourcesPerQuery: 3,
