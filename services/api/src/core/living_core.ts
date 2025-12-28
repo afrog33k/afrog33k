@@ -183,6 +183,19 @@ export class LivingCore extends EventEmitter {
   }
 
   // ==========================================================================
+  // RESEARCH ADAPTER EVENTS
+  // ==========================================================================
+
+  private setupResearchAdapterEvents(): void {
+    this.researchAdapter.on('web_search_complete', (data) => this.emit('web_search_complete', data));
+    this.researchAdapter.on('web_search_error', (data) => this.emit('web_search_error', data));
+    this.researchAdapter.on('repo_search_complete', (data) => this.emit('repo_search_complete', data));
+    this.researchAdapter.on('repo_search_error', (data) => this.emit('repo_search_error', data));
+    this.researchAdapter.on('arxiv_search_complete', (data) => this.emit('arxiv_search_complete', data));
+    this.researchAdapter.on('arxiv_search_error', (data) => this.emit('arxiv_search_error', data));
+  }
+
+  // ==========================================================================
   // SCHEMA INITIALIZATION
   // ==========================================================================
 
@@ -719,24 +732,87 @@ export class LivingCore extends EventEmitter {
    * Search the web for a topic
    */
   private async webSearch(query: string): Promise<Omit<ResearchResult, 'rabbitHoleId'>[]> {
-    // TODO: Implement actual web search
-    // For now, emit an event so external systems can provide results
-    this.emit('web_search_request', { query });
+    const results: Omit<ResearchResult, 'rabbitHoleId'>[] = [];
 
-    // Placeholder: In production, this would call a search API
-    return [];
+    try {
+      // Web search
+      const webResults = await this.researchAdapter.webSearch(query);
+
+      for (const result of webResults) {
+        // Fetch content from URL
+        const content = await this.researchAdapter.fetchContent(result.url);
+
+        // Extract insights
+        const insights = content
+          ? this.researchAdapter.extractInsights(content, query)
+          : [];
+
+        results.push({
+          id: result.id,
+          source: result.url,
+          sourceType: 'web',
+          content: content || result.snippet,
+          insights,
+          quality: insights.length > 0 ? 0.6 : 0.3,
+          fetchedAt: new Date(),
+        });
+      }
+
+      // Also search arXiv for academic papers
+      const papers = await this.researchAdapter.searchArxiv(query, 3);
+      for (const paper of papers) {
+        results.push({
+          id: paper.id,
+          source: paper.url,
+          sourceType: 'paper',
+          content: `${paper.title}\n\nAuthors: ${paper.authors.join(', ')}\n\nAbstract: ${paper.abstract}`,
+          insights: [paper.abstract.substring(0, 200) + '...'],
+          quality: 0.8, // Academic papers are high quality
+          fetchedAt: new Date(),
+        });
+      }
+
+    } catch (error) {
+      this.emit('web_search_error', { query, error });
+    }
+
+    return results;
   }
 
   /**
    * Search GitHub repos for a topic
    */
   private async searchRepos(query: string): Promise<Omit<ResearchResult, 'rabbitHoleId'>[]> {
-    // TODO: Implement actual repo search
-    // For now, emit an event so external systems can provide results
-    this.emit('repo_search_request', { query });
+    const results: Omit<ResearchResult, 'rabbitHoleId'>[] = [];
 
-    // Placeholder: In production, this would call GitHub API
-    return [];
+    try {
+      const repos = await this.researchAdapter.searchRepos(query);
+
+      for (const repo of repos) {
+        // Fetch README for more context
+        const readme = await this.researchAdapter.fetchReadme(repo.fullName);
+
+        // Extract insights from README
+        const insights = readme
+          ? this.researchAdapter.extractInsights(readme, query)
+          : [];
+
+        results.push({
+          id: repo.id,
+          source: repo.url,
+          sourceType: 'repo',
+          content: `${repo.fullName} (${repo.stars} stars)\n\n${repo.description}\n\nTopics: ${repo.topics.join(', ')}\n\nLanguage: ${repo.language}${readme ? `\n\nREADME:\n${readme.substring(0, 2000)}...` : ''}`,
+          insights,
+          quality: Math.min(1, repo.stars / 1000 + 0.3), // More stars = higher quality
+          fetchedAt: new Date(),
+        });
+      }
+
+    } catch (error) {
+      this.emit('repo_search_error', { query, error });
+    }
+
+    return results;
   }
 
   // ==========================================================================
