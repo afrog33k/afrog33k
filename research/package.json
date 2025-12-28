@@ -6,6 +6,7 @@
   "scripts": {
     "exp1": "tsx experiments/long_horizon_learning.ts",
     "exp2": "tsx experiments/persona_emergence.ts",
+    "exp2b": "tsx experiments/persona_with_embeddings.ts",
     "exp3": "tsx experiments/world_model_coherence.ts",
     "all": "tsx run_all_experiments.ts",
     "report": "tsx generate_report.ts"
