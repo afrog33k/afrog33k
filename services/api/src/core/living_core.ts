@@ -1149,6 +1149,20 @@ ${hole.suggested_depth} | Value: ${(hole.estimated_value * 100).toFixed(0)}% | C
   }
 
   /**
+   * Get full cognitive state (BDI + Drives + Attention)
+   */
+  getCognitiveState() {
+    return {
+      beliefs: this.cognitive.getBeliefs(),
+      desires: this.cognitive.getDesires(),
+      drives: this.cognitive.getDrives(),
+      urgentDrives: this.cognitive.getUrgentDrives(),
+      attention: this.cognitive.getAttentionState(),
+      inferredNeeds: this.cognitive.inferNeeds(),
+    };
+  }
+
+  /**
    * Get pending questions
    */
   getPendingQuestions(): Question[] {
