@@ -17,9 +17,12 @@
  */
 
 import Database from 'better-sqlite3';
-import { BDIUserModel, createBDIUserModel } from '../../services/api/src/lib/bdi_model';
+import { createBDIModel, BDIReasoner } from '../../services/api/src/lib/bdi_model';
 import { createVectorSearch, VectorSearch, MockEmbeddingProvider } from '../../services/api/src/lib/vector_search';
-import { MemoryDecayManager, DecayCalculator } from '../../services/api/src/lib/memory_decay';
+import { DecayCalculator } from '../../services/api/src/lib/memory_decay';
+
+// Type alias for clarity
+type BDIModel = BDIReasoner;
 
 // =============================================================================
 // GROUND TRUTH DATA
