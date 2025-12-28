@@ -984,13 +984,25 @@ const isMainModule = process.argv[1] && (
 if (isMainModule) {
   const question = process.argv[2] || 'What is Server Driven UI (SDUI) and how do companies like Airbnb implement it?';
 
-  // Use Ollama with qwen3:0.6b for real LLM-powered research (smaller model for limited memory)
-  console.log('Using Ollama with qwen3:0.6b for LLM-powered research...\n');
-  const llm = new OllamaLLMProvider('qwen3:0.6b');
+  // Auto-select LLM provider based on available API keys
+  let llm: LLMProvider;
+
+  if (process.env.OPENROUTER_API_KEY) {
+    console.log('Using OpenRouter (fast, cloud-based)...\n');
+    llm = new OpenRouterLLMProvider(process.env.OPENROUTER_API_KEY);
+  } else if (process.env.ANTHROPIC_API_KEY) {
+    console.log('Using Anthropic Claude (fast, cloud-based)...\n');
+    llm = new AnthropicLLMProvider(process.env.ANTHROPIC_API_KEY);
+  } else {
+    console.log('Using smart rule-based provider (no API key found)...');
+    console.log('For better results, set OPENROUTER_API_KEY or ANTHROPIC_API_KEY\n');
+    llm = new SmartRuleBasedProvider();
+  }
+
   const engine = new LLMDeepResearch(llm, {
-    maxSteps: 8,  // Limit steps for faster testing
-    maxSourcesPerQuery: 3,
-    minConfidenceToStop: 0.6,
+    maxSteps: 10,
+    maxSourcesPerQuery: 5,
+    minConfidenceToStop: 0.7,
   });
 
   engine.on('research_started', ({ question }) => {
