@@ -1,0 +1,19 @@
+{
+  "name": "ronald-gi-benchmarks",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "integration": "tsx integration_test.ts",
+    "cost": "tsx cost_analysis.ts",
+    "persona": "tsx persona_test.ts",
+    "all": "npm run integration && npm run cost && npm run persona"
+  },
+  "dependencies": {
+    "better-sqlite3": "^11.1.2",
+    "tsx": "^4.19.1"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.10"
+  }
+}
