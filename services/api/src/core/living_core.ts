@@ -311,6 +311,11 @@ export class LivingCore extends EventEmitter {
         estimated_cost REAL DEFAULT 0.5,
         suggested_depth TEXT DEFAULT 'read',
         status TEXT DEFAULT 'pending',
+        synthesis TEXT,                      -- Research summary/synthesis
+        curiosity_score REAL DEFAULT 1.0,    -- How much more to learn
+        settled_score REAL DEFAULT 0.0,      -- How complete the answer is
+        confidence REAL DEFAULT 0.0,         -- Confidence in synthesis
+        recommendations TEXT DEFAULT '[]',   -- Actionable next steps
         created_at TEXT DEFAULT CURRENT_TIMESTAMP
       );
 
