@@ -892,6 +892,47 @@ export class OllamaLLMProvider implements LLMProvider {
 }
 
 // ============================================================================
+// OPENROUTER LLM PROVIDER (supports many models, has free tier)
+// ============================================================================
+
+export class OpenRouterLLMProvider implements LLMProvider {
+  name = 'openrouter';
+  private apiKey: string;
+  private model: string;
+
+  constructor(apiKey: string, model: string = 'meta-llama/llama-3.2-3b-instruct:free') {
+    this.apiKey = apiKey;
+    this.model = model;
+  }
+
+  async complete(prompt: string, options: { maxTokens?: number; temperature?: number } = {}): Promise<string> {
+    const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${this.apiKey}`,
+        'HTTP-Referer': 'https://ronald-gi.local',
+        'X-Title': 'Ronald-GI Research',
+      },
+      body: JSON.stringify({
+        model: this.model,
+        max_tokens: options.maxTokens || 1024,
+        temperature: options.temperature || 0.7,
+        messages: [{ role: 'user', content: prompt }],
+      }),
+    });
+
+    if (!response.ok) {
+      const error = await response.text();
+      throw new Error(`OpenRouter API error: ${response.status} - ${error}`);
+    }
+
+    const data = await response.json();
+    return data.choices?.[0]?.message?.content || '';
+  }
+}
+
+// ============================================================================
 // ANTHROPIC LLM PROVIDER
 // ============================================================================
 
