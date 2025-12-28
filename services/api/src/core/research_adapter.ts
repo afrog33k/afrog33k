@@ -172,12 +172,19 @@ export class ResearchAdapter extends EventEmitter {
       }
     }
 
-    // Fall back to Wikipedia if SearXNG failed
+    // Fall back to HN if SearXNG failed (better for tech topics)
     if (results.length === 0) {
+      const hnResults = await this.searchHackerNews(query, maxResults);
+      if (hnResults.length > 0) {
+        return hnResults;
+      }
+
+      // Fall back to Wikipedia
       const wikiResults = await this.wikipediaSearch(query, maxResults);
       if (wikiResults.length > 0) {
         return wikiResults;
       }
+
       this.emit('web_search_error', { query, error: 'All search sources failed' });
     }
 
@@ -226,6 +233,52 @@ export class ResearchAdapter extends EventEmitter {
 
     } catch (error) {
       // Wikipedia search failed
+    }
+
+    return results;
+  }
+
+  /**
+   * Search Hacker News via Algolia API (reliable, no API key needed)
+   */
+  async searchHackerNews(query: string, maxResults: number = 5): Promise<SearchResult[]> {
+    const results: SearchResult[] = [];
+
+    try {
+      const encodedQuery = encodeURIComponent(query);
+      const url = `https://hn.algolia.com/api/v1/search?query=${encodedQuery}&hitsPerPage=${maxResults}&tags=story`;
+
+      const response = await fetch(url, {
+        headers: {
+          'User-Agent': this.userAgent,
+          'Accept': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        return results;
+      }
+
+      const data = await response.json();
+
+      for (const hit of data.hits || []) {
+        if (hit.url) {
+          results.push({
+            id: `hn-${hit.objectID}`,
+            url: hit.url,
+            title: hit.title,
+            snippet: hit.story_text?.slice(0, 200) || `${hit.points} points, ${hit.num_comments} comments`,
+            source: 'hackernews',
+          });
+        }
+      }
+
+      if (results.length > 0) {
+        this.emit('hn_search_complete', { query, results });
+      }
+
+    } catch (error) {
+      // HN search failed
     }
 
     return results;
