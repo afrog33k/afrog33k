@@ -23,6 +23,7 @@ import Database from 'better-sqlite3';
 import { EventEmitter } from 'events';
 import { ResearchAdapter, SearchResult, RepoInfo, PaperInfo } from './research_adapter';
 import { CognitiveIntegration } from './cognitive_integration';
+import { DeepResearchEngine, ResearchSession, ResearchFinding } from './deep_research';
 
 // ============================================================================
 // TYPES
