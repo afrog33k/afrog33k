@@ -654,6 +654,14 @@ if (isMainModule) {
     console.log(`\n📄 arXiv search skipped for "${query}": ${reason}`);
   });
 
+  adapter.on('hn_search_complete', ({ query, results }) => {
+    console.log(`\n📰 Hacker News for "${query}":`);
+    results.forEach((r: SearchResult) => {
+      console.log(`  - ${r.title}`);
+      console.log(`    ${r.url}`);
+    });
+  });
+
   adapter.on('web_search_error', ({ error }) => {
     console.log(`\n❌ Web search error: ${error}`);
   });
@@ -671,9 +679,18 @@ if (isMainModule) {
     adapter.searchArxiv(query),
   ]).then(([webResults, repoResults, arxivResults]) => {
     console.log(`\nSummary for "${query}":`);
-    console.log(`  Web results: ${webResults.length}`);
+    console.log(`  Web results: ${webResults.length} (source: ${webResults[0]?.source || 'none'})`);
     console.log(`  Repo results: ${repoResults.length}`);
     console.log(`  arXiv results: ${arxivResults.length}`);
+
+    // Print web results
+    if (webResults.length > 0) {
+      console.log('\n🔍 Web results:');
+      webResults.forEach((r: SearchResult) => {
+        console.log(`  - ${r.title}`);
+        console.log(`    ${r.url}`);
+      });
+    }
 
     // Also test academic query
     console.log(`\n\n--- Testing academic query: "${academicQuery}" ---`);
