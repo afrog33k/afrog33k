@@ -486,32 +486,40 @@ const isMainModule = process.argv[1] && (
 );
 
 if (isMainModule) {
-  // Select LLM provider
-  let llm: LLMProvider;
+  (async () => {
+    // Select LLM provider
+    let llm: LLMProvider;
 
-  if (process.env.OPENROUTER_API_KEY) {
-    const { OpenRouterLLMProvider } = await import('./llm_deep_research');
-    llm = new OpenRouterLLMProvider(process.env.OPENROUTER_API_KEY);
-  } else {
-    console.log('Using smart rule-based provider (no API key found)');
-    llm = new SmartRuleBasedProvider();
-  }
+    const useOllama = process.argv.includes('--ollama');
+    const ollamaModel = process.argv.find(a => a.startsWith('--model='))?.split('=')[1] || 'qwen3:0.6b';
 
-  // Run benchmarks
-  const benchmark = new ResearchBenchmark(llm);
-
-  // Parse args for specific task or subset
-  const taskId = process.argv[2];
-  if (taskId) {
-    const task = BENCHMARK_TASKS.find(t => t.id === taskId);
-    if (task) {
-      await benchmark.runTask(task);
+    if (useOllama) {
+      console.log(`Using Ollama with model ${ollamaModel}`);
+      llm = new OllamaLLMProvider(ollamaModel, 'http://127.0.0.1:11434');
+    } else if (process.env.OPENROUTER_API_KEY) {
+      const { OpenRouterLLMProvider } = await import('./llm_deep_research');
+      llm = new OpenRouterLLMProvider(process.env.OPENROUTER_API_KEY);
     } else {
-      console.log(`Task ${taskId} not found. Available: ${BENCHMARK_TASKS.map(t => t.id).join(', ')}`);
+      console.log('Using smart rule-based provider (no API key found)');
+      llm = new SmartRuleBasedProvider();
     }
-  } else {
-    // Run subset for quick test
-    const quickTasks = BENCHMARK_TASKS.filter(t => t.difficulty === 'easy');
-    await benchmark.runAll(quickTasks);
-  }
+
+    // Run benchmarks
+    const benchmark = new ResearchBenchmark(llm);
+
+    // Parse args for specific task or subset
+    const taskId = process.argv.find(a => !a.startsWith('-') && a !== process.argv[0] && a !== process.argv[1]);
+    if (taskId) {
+      const task = BENCHMARK_TASKS.find(t => t.id === taskId);
+      if (task) {
+        await benchmark.runTask(task);
+      } else {
+        console.log(`Task ${taskId} not found. Available: ${BENCHMARK_TASKS.map(t => t.id).join(', ')}`);
+      }
+    } else {
+      // Run subset for quick test
+      const quickTasks = BENCHMARK_TASKS.filter(t => t.difficulty === 'easy');
+      await benchmark.runAll(quickTasks);
+    }
+  })().catch(console.error);
 }
