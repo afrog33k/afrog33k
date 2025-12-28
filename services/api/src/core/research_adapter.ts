@@ -469,7 +469,11 @@ export class ResearchAdapter extends EventEmitter {
 // ============================================================================
 
 // CLI test - run with: npx tsx src/core/research_adapter.ts "query"
-const isMainModule = typeof require !== 'undefined' && require.main === module;
+import { fileURLToPath } from 'url';
+const isMainModule = process.argv[1] && (
+  process.argv[1] === fileURLToPath(import.meta.url) ||
+  process.argv[1].includes('research_adapter')
+);
 if (isMainModule) {
   const adapter = new ResearchAdapter();
 
