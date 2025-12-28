@@ -458,9 +458,17 @@ export class DeepResearchEngine extends EventEmitter {
     question: ResearchQuestion,
     session: ResearchSession
   ): Promise<ResearchFinding | null> {
-    // Fetch full content
-    const content = await this.adapter.fetchContent(result.url);
-    if (!content || content.length < 100) return null;
+    // Try to fetch full content, but use snippet as fallback
+    let content = await this.adapter.fetchContent(result.url);
+
+    // Use snippet if full content fetch failed
+    if (!content || content.length < 100) {
+      if (result.snippet && result.snippet.length > 30) {
+        content = `${result.title}\n\n${result.snippet}`;
+      } else {
+        return null; // No content at all
+      }
+    }
 
     const concepts = this.extractConcepts(content);
     const insights = this.extractInsights(content, question.original);
