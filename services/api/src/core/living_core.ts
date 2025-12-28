@@ -733,6 +733,7 @@ export class LivingCore extends EventEmitter {
 
   /**
    * Actually do research on a rabbit hole
+   * Uses deep research for deep-dive topics, quick search for skims
    */
   private async research(rabbitHole: RabbitHole): Promise<ResearchResult[]> {
     const results: ResearchResult[] = [];
@@ -743,16 +744,22 @@ export class LivingCore extends EventEmitter {
     this.emit('research_start', { rabbitHole });
 
     try {
-      // Web search
-      if (this.config.enableWebSearch) {
-        const webResults = await this.webSearch(rabbitHole.topic);
-        results.push(...webResults.map(r => ({ ...r, rabbitHoleId: rabbitHole.id })));
-      }
+      // Use deep research for deep-dive topics (more thorough)
+      if (rabbitHole.suggestedDepth === 'deep-dive') {
+        const deepResults = await this.doDeepResearch(rabbitHole);
+        results.push(...deepResults);
+      } else {
+        // Quick research for skim/read topics
+        if (this.config.enableWebSearch) {
+          const webResults = await this.webSearch(rabbitHole.topic);
+          results.push(...webResults.map(r => ({ ...r, rabbitHoleId: rabbitHole.id })));
+        }
 
-      // Repo analysis (if topic looks like a technology)
-      if (this.config.enableRepoAnalysis && rabbitHole.suggestedDepth === 'deep-dive') {
-        const repoResults = await this.searchRepos(rabbitHole.topic);
-        results.push(...repoResults.map(r => ({ ...r, rabbitHoleId: rabbitHole.id })));
+        // Repo analysis for read depth
+        if (this.config.enableRepoAnalysis && rabbitHole.suggestedDepth === 'read') {
+          const repoResults = await this.searchRepos(rabbitHole.topic);
+          results.push(...repoResults.map(r => ({ ...r, rabbitHoleId: rabbitHole.id })));
+        }
       }
 
       // Store results
@@ -790,6 +797,31 @@ export class LivingCore extends EventEmitter {
     }
 
     return results;
+  }
+
+  /**
+   * Deep research using the full research harness
+   * Returns findings converted to ResearchResult format
+   */
+  private async doDeepResearch(rabbitHole: RabbitHole): Promise<ResearchResult[]> {
+    // Load existing concepts as prior knowledge
+    const existingConcepts = this.db.prepare(`SELECT name FROM concepts`).all() as { name: string }[];
+    this.deepResearch.addExistingKnowledge(existingConcepts.map(c => c.name));
+
+    // Run deep research
+    const session = await this.deepResearch.research(rabbitHole.topic);
+
+    // Convert findings to ResearchResult format
+    return session.findings.map((finding: ResearchFinding) => ({
+      id: finding.id,
+      rabbitHoleId: rabbitHole.id,
+      source: finding.source,
+      sourceType: finding.sourceType,
+      content: finding.content,
+      insights: finding.keyInsights,
+      quality: (finding.relevanceScore + finding.noveltyScore + finding.credibilityScore) / 3,
+      fetchedAt: finding.timestamp,
+    }));
   }
 
   /**
