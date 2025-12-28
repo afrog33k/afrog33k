@@ -650,6 +650,204 @@ export class LLMDeepResearch extends EventEmitter {
   }
 
   // ==========================================================================
+  // SELF-REFLECTION (Step-DeepResearch error-reflection loop)
+  // ==========================================================================
+
+  private async reflectOnStep(step: ResearchStep, workspace: Workspace): Promise<ReflectionResult> {
+    // Quick heuristic check before calling LLM
+    const observationLength = step.observation?.length || 0;
+    const hasResults = observationLength > 100;
+    const hasError = step.observation?.toLowerCase().includes('error') ||
+                     step.observation?.toLowerCase().includes('failed') ||
+                     step.observation?.toLowerCase().includes('found 0');
+
+    // If clearly successful, skip LLM reflection
+    if (hasResults && !hasError) {
+      return { success: true, shouldRetry: false };
+    }
+
+    // If clearly failed and action was search, suggest query modification
+    if (hasError || observationLength < 50) {
+      const action = step.action as any;
+      if (action.type === 'search_web' || action.type === 'search_repos') {
+        const query = action.query || '';
+        // Try simplifying the query
+        const simplifiedQuery = this.simplifyQuery(query);
+        if (simplifiedQuery !== query) {
+          return {
+            success: false,
+            issue: 'Search returned poor results',
+            suggestion: `Try simplified query: "${simplifiedQuery}"`,
+            shouldRetry: true,
+            modifiedAction: { type: action.type, query: simplifiedQuery },
+          };
+        }
+      }
+      return { success: false, issue: 'No useful results', shouldRetry: false };
+    }
+
+    // For ambiguous cases, use LLM reflection
+    try {
+      const prompt = PROMPTS.reflectOnStep(step, workspace);
+      const response = await this.llm.complete(prompt);
+      const parsed = JSON.parse(this.extractJSON(response));
+      return {
+        success: parsed.success ?? true,
+        issue: parsed.issue,
+        suggestion: parsed.suggestion,
+        shouldRetry: parsed.shouldRetry ?? false,
+        modifiedAction: parsed.modifiedAction,
+      };
+    } catch (e) {
+      // Default to successful if LLM fails
+      return { success: true, shouldRetry: false };
+    }
+  }
+
+  private simplifyQuery(query: string): string {
+    // Remove question words and simplify
+    const simplified = query
+      .replace(/\b(what|how|why|when|where|which|who|is|are|do|does|can|could|would|should)\b/gi, '')
+      .replace(/[?.,!]/g, '')
+      .trim()
+      .split(/\s+/)
+      .filter(w => w.length > 3)
+      .slice(0, 4)
+      .join(' ');
+    return simplified || query;
+  }
+
+  private trackReflection(iteration: number, reflection: ReflectionResult): void {
+    const history = this.reflectionHistory.get(iteration) || [];
+    history.push(reflection);
+    this.reflectionHistory.set(iteration, history);
+  }
+
+  // ==========================================================================
+  // CROSS-VALIDATION (multi-source verification)
+  // ==========================================================================
+
+  private async crossValidateClaims(workspace: Workspace): Promise<void> {
+    this.emit('cross_validation_started', { citationCount: workspace.citations.length });
+
+    // Group citations by topic/claim they support
+    const claimGroups = this.groupCitationsByClaim(workspace);
+
+    for (const [claim, sources] of claimGroups) {
+      if (sources.length >= this.config.crossValidationThreshold) {
+        const validation = await this.validateClaimAcrossSources(claim, sources);
+        this.validatedClaims.push(validation);
+
+        // Boost confidence if claim is well-validated
+        if (validation.validationScore > 0.8) {
+          workspace.confidence = Math.min(1, workspace.confidence + 0.05);
+        }
+
+        // Log conflicts for investigation
+        if (validation.conflicts.length > 0) {
+          this.emit('conflict_detected', { claim, conflicts: validation.conflicts });
+        }
+      }
+    }
+
+    this.emit('cross_validation_completed', {
+      claimsValidated: this.validatedClaims.length,
+      averageScore: this.validatedClaims.reduce((s, c) => s + c.validationScore, 0) / Math.max(1, this.validatedClaims.length),
+    });
+  }
+
+  private groupCitationsByClaim(workspace: Workspace): Map<string, Citation[]> {
+    const groups = new Map<string, Citation[]>();
+
+    // Extract key topics from synthesis and group citations
+    const topics = this.extractKeyTopics(workspace.synthesis);
+
+    for (const topic of topics) {
+      const relevantCitations = workspace.citations.filter(c =>
+        c.content.toLowerCase().includes(topic.toLowerCase()) ||
+        c.title.toLowerCase().includes(topic.toLowerCase())
+      );
+      if (relevantCitations.length >= 2) {
+        groups.set(topic, relevantCitations);
+      }
+    }
+
+    return groups;
+  }
+
+  private extractKeyTopics(synthesis: string): string[] {
+    // Extract noun phrases and key terms from synthesis
+    const words = synthesis.split(/\s+/);
+    const topics: string[] = [];
+
+    // Look for capitalized terms (proper nouns, acronyms)
+    const capitalizedPattern = /\b[A-Z][a-zA-Z]+(?:\s+[A-Z][a-zA-Z]+)*\b/g;
+    const capitalized = synthesis.match(capitalizedPattern) || [];
+    topics.push(...capitalized.slice(0, 5));
+
+    // Look for technical terms in quotes
+    const quotedPattern = /"([^"]+)"|'([^']+)'/g;
+    let match;
+    while ((match = quotedPattern.exec(synthesis)) !== null) {
+      topics.push(match[1] || match[2]);
+    }
+
+    return [...new Set(topics)];
+  }
+
+  private async validateClaimAcrossSources(claim: string, sources: Citation[]): Promise<ValidatedClaim> {
+    try {
+      const prompt = PROMPTS.crossValidate(claim, sources);
+      const response = await this.llm.complete(prompt);
+      const parsed = JSON.parse(this.extractJSON(response));
+
+      return {
+        claim,
+        sources,
+        validationScore: parsed.validationScore ?? 0.5,
+        conflicts: parsed.conflicts ?? [],
+      };
+    } catch (e) {
+      // Default validation based on source count
+      return {
+        claim,
+        sources,
+        validationScore: Math.min(1, sources.length * 0.2),
+        conflicts: [],
+      };
+    }
+  }
+
+  // ==========================================================================
+  // AUTHORITY-AWARE SOURCE RANKING
+  // ==========================================================================
+
+  private getAuthorityScore(url: string): number {
+    if (!this.config.authorityBoostEnabled) return 0.5;
+
+    try {
+      const domain = new URL(url).hostname.replace('www.', '');
+      // Check for exact match
+      if (AUTHORITY_DOMAINS[domain]) return AUTHORITY_DOMAINS[domain];
+      // Check for partial match (e.g., medium.com/airbnb-engineering)
+      for (const [authorityDomain, score] of Object.entries(AUTHORITY_DOMAINS)) {
+        if (url.includes(authorityDomain)) return score;
+      }
+      return AUTHORITY_DOMAINS['default'];
+    } catch {
+      return AUTHORITY_DOMAINS['default'];
+    }
+  }
+
+  private rankCitationsByAuthority(citations: Citation[]): Citation[] {
+    return [...citations].sort((a, b) => {
+      const scoreA = this.getAuthorityScore(a.url);
+      const scoreB = this.getAuthorityScore(b.url);
+      return scoreB - scoreA;
+    });
+  }
+
+  // ==========================================================================
   // CITATION VERIFICATION
   // ==========================================================================
 
