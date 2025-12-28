@@ -83,7 +83,7 @@ export interface ResearchResult {
   id: string;
   rabbitHoleId: string;
   source: string;            // URL or identifier
-  sourceType: 'web' | 'repo' | 'paper' | 'code';
+  sourceType: 'web' | 'repo' | 'paper' | 'code' | 'documentation';
   content: string;
   insights: string[];
   quality: number;           // 0-1
