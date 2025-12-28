@@ -416,7 +416,5 @@ async function main() {
 // Export for use in test framework
 export { calculateCosts, measurePerformance, SCENARIOS, CLOUD_COSTS };
 
-// Run if called directly
-if (require.main === module) {
-  main().catch(console.error);
-}
+// Run benchmark
+main().catch(console.error);

@@ -331,7 +331,5 @@ async function main() {
 // Export for use in test framework
 export { runPersonaBenchmark, SHERLOCK_PERSONA, generateNoise };
 
-// Run if called directly
-if (require.main === module) {
-  main().catch(console.error);
-}
+// Run benchmark
+main().catch(console.error);
