@@ -1,0 +1,20 @@
+{
+  "name": "ronald-gi-research",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "exp1": "tsx experiments/long_horizon_learning.ts",
+    "exp2": "tsx experiments/persona_emergence.ts",
+    "exp3": "tsx experiments/world_model_coherence.ts",
+    "all": "tsx run_all_experiments.ts",
+    "report": "tsx generate_report.ts"
+  },
+  "dependencies": {
+    "better-sqlite3": "^11.1.2",
+    "tsx": "^4.19.1"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.10"
+  }
+}
