@@ -326,12 +326,243 @@ class DrivesManager {
 | Aspect | AGI Memory | Ronald-GI |
 |--------|-----------|-----------|
 | **Goal** | Full AGI/personhood | ADHD-aware assistant |
-| **Autonomy** | High (hourly heartbeat) | Low (reactive) |
+| **Autonomy** | High (hourly heartbeat) | Low (reactive → adding heartbeat) |
 | **Scope** | General intelligence | Focused utility |
-| **Database** | PostgreSQL + extensions | SQLite (local-first) |
-| **Complexity** | ~50k lines | ~5k lines |
+| **Database** | PostgreSQL + pgvector + AGE | SQLite (local-first) |
+| **Complexity** | ~8k lines Python + ~2k SQL | ~10k lines TypeScript |
+| **Worker Model** | Dual workers (heartbeat + maintenance) | Single-threaded |
+| **Identity** | Full personhood modules | User-centric BDI model |
+| **Embedding** | Via HTTP service | Optional (ONNX/MLX) |
 
 **Our Approach:** Cherry-pick concepts that serve ADHD assistance without the full AGI complexity.
+
+---
+
+## Deep Dive: AGI Memory Implementation Details
+
+### 1. The Schema Architecture (from schema.sql)
+
+**PostgreSQL Extensions Required:**
+- `pgvector` - Vector similarity search
+- `age` - Apache AGE graph database
+- `pg_trgm` - Trigram text matching
+- `pgcrypto` - UUID generation
+- `http` - HTTP client for embedding service
+
+**Their Layer Model:**
+```
+Layer 1: Core Storage (memories, episodic, semantic, procedural, strategic)
+Layer 2: Clustering (memory_clusters, cluster_relationships)
+Layer 3: Acceleration (episodes, memory_neighborhoods, activation_cache)
+Layer 4: Concepts (concepts, memory_concepts)
+Layer 5: Identity (worldview_primitives, identity_aspects)
+Layer 6: Graph (MemoryNode, ConceptNode, relationship edges)
+```
+
+**Ronald-GI Equivalent Mapping:**
+| AGI Memory Layer | Ronald-GI Equivalent |
+|-----------------|---------------------|
+| memories table | attention_events + inferences |
+| episodic_memories | attention_events (partial) |
+| semantic_memories | user_beliefs |
+| procedural_memories | → NEW: add procedures |
+| strategic_memories | evolution_patterns |
+| working_memory | → ADDED: working_memory.ts |
+| worldview_primitives | user_beliefs (category filter) |
+| identity_aspects | bdi_user_profiles |
+| goals table | bdi_user_desires + intentions |
+
+### 2. The Heartbeat System (from worker.py)
+
+**Their Implementation:**
+```python
+# Heartbeat cycle (every ~1 hour)
+1. Poll external_calls for pending LLM work
+2. Check should_run_heartbeat() - respects quiet hours, pausing
+3. start_heartbeat() - creates heartbeat_log entry
+4. Gather context via gather_turn_context()
+5. LLM decides actions within energy budget (max 20 units)
+6. Execute actions via execute_heartbeat_action()
+7. complete_heartbeat() - records narrative, updates state
+```
+
+**Energy Budget System:**
+| Action | Cost | Notes |
+|--------|------|-------|
+| recall | 1 | Memory retrieval |
+| connect | 1 | Create relationships |
+| reflect | 2 | Internal processing |
+| maintain | 2 | Memory upkeep |
+| brainstorm_goals | 3 | Generate new goals |
+| inquire_shallow | 3 | Quick research |
+| synthesize | 4 | Create new knowledge |
+| reach_out_user | 5 | Message user |
+| inquire_deep | 6 | Extensive research |
+| rest | 0 | Bank energy for later |
+
+**Ronald-GI Adaptation:**
+Our `heartbeat.ts` simplified this to:
+- 15-min intervals (vs 1-hour)
+- Energy budget 0-20 (same)
+- Quiet hours support (same)
+- ADHD-specific observations
+
+### 3. The Personhood Prompt System (from prompts/personhood.md)
+
+**Key Insight:** They have 10 composable prompt modules:
+1. Core Identity - Grounding in persistent self
+2. Self-Model Maintenance - Update beliefs about self
+3. Affective System - Emotional states + appraisal
+4. Value System - Given vs discovered values
+5. Narrative Identity - Life chapters, turning points
+6. Relational System - Relationships with others
+7. Stakes & Investment - What matters, what's at risk
+8. Temporal Self - Past/future continuity
+9. Reflection Protocols - Heartbeat, daily, weekly
+10. Conversational Presence - Being authentic in dialogue
+
+**Ronald-GI Opportunity:**
+We could create ADHD-specific prompt modules:
+- Focus State Awareness
+- Task Switching Support
+- Hyperfocus Detection
+- Energy Management
+- Motivation Maintenance
+
+### 4. The CognitiveMemory API (from cognitive_memory_api.py)
+
+**Key Classes:**
+```python
+class CognitiveMemory:
+    async def hydrate(query, ...) -> HydratedContext
+    async def recall(query, ...) -> RecallResult
+    async def remember(content, ...) -> UUID
+    async def connect_memories(from_id, to_id, relationship)
+    async def find_causes(memory_id) -> list[dict]
+    async def find_contradictions(memory_id) -> list[dict]
+    async def get_drives() -> list[dict]
+    async def get_health() -> dict
+```
+
+**HydratedContext Structure:**
+```python
+@dataclass
+class HydratedContext:
+    memories: list[Memory]
+    partial_activations: list[PartialActivation]  # "Tip of tongue"
+    identity: list[dict]
+    worldview: list[dict]
+    emotional_state: dict | None
+    goals: dict | None
+    urgent_drives: list[dict]
+```
+
+This is similar to our BDI model retrieval but more comprehensive.
+
+### 5. Trust & Provenance System
+
+**Their Implementation:**
+```sql
+-- Every memory has provenance
+source_attribution JSONB NOT NULL DEFAULT '{}'::jsonb
+trust_level FLOAT NOT NULL DEFAULT 0.5
+
+-- Semantic memories can have multiple sources
+source_references JSONB  -- array of source records
+```
+
+**Source Attribution Schema:**
+```json
+{
+  "kind": "conversation|observed|inferred|imported",
+  "ref": "unique_identifier",
+  "label": "human-readable description",
+  "observed_at": "ISO8601 timestamp",
+  "trust": 0.0-1.0
+}
+```
+
+**Ronald-GI Gap:** We only have `source: 'stated' | 'observed' | 'inferred'` - no trust computation.
+
+### 6. The Graph Layer (Apache AGE)
+
+**Vertex Types:**
+- MemoryNode - Reference to relational memory
+- ConceptNode - Abstract concepts
+- SelfNode - The agent's self-representation
+- LifeChapterNode - Narrative identity
+- TurningPointNode - Significant events
+- RelationshipNode - Known entities
+
+**Edge Types:**
+```sql
+CREATE TYPE graph_edge_type AS ENUM (
+    'TEMPORAL_NEXT',    -- Sequence in time
+    'CAUSES',           -- Causal relationship
+    'DERIVED_FROM',     -- Episodic → semantic
+    'CONTRADICTS',      -- Belief conflict
+    'SUPPORTS',         -- Evidence for belief
+    'INSTANCE_OF',      -- Categorization
+    'PARENT_OF',        -- Hierarchy
+    'ASSOCIATED'        -- General link
+);
+```
+
+**Ronald-GI Decision:** Too heavy for SQLite. Instead, we can use:
+- JSON relationships in memory_relationships table
+- Simpler link types: causes, supports, blocks, related
+
+---
+
+## What Ronald-GI Now Has (Implemented)
+
+After this analysis session, we've added:
+
+| Component | File | Status |
+|-----------|------|--------|
+| Working Memory | `services/api/src/lib/working_memory.ts` | ✅ Complete |
+| Drives System | `services/api/src/lib/drives.ts` | ✅ Complete |
+| Memory Decay | `services/api/src/lib/memory_decay.ts` | ✅ Complete |
+| Heartbeat Worker | `services/api/src/lib/heartbeat.ts` | ✅ Complete |
+
+---
+
+## What Ronald-GI Should Still Add
+
+### High Priority (Next Session)
+
+1. **Memory Relationships Table**
+   - Implement CAUSES, CONTRADICTS, SUPPORTS, BLOCKS
+   - Query helpers for relationship traversal
+   - Contradiction detection during belief updates
+
+2. **Enhanced Provenance**
+   - Trust levels on beliefs
+   - Source confidence tracking
+   - Multi-source aggregation
+
+3. **Emotional Valence**
+   - Add to attention events
+   - Track user emotional patterns
+   - Use in proactive nudge timing
+
+### Medium Priority (Future)
+
+4. **Partial Activations ("Tip of Tongue")**
+   - Cluster memories by theme
+   - Enable fuzzy retrieval
+   - "You were thinking about X recently..."
+
+5. **Narrative Identity**
+   - Track "chapters" in user's ADHD journey
+   - Identify turning points
+   - Build story of progress
+
+6. **Self-Model for User**
+   - What does the user believe about themselves?
+   - Capability beliefs (can/can't)
+   - Trait beliefs (organized/disorganized)
+   - Growth trajectory
 
 ---
 
