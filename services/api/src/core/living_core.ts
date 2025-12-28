@@ -21,6 +21,7 @@
 
 import Database from 'better-sqlite3';
 import { EventEmitter } from 'events';
+import { fileURLToPath } from 'url';
 import { ResearchAdapter, SearchResult, RepoInfo, PaperInfo } from './research_adapter';
 import { CognitiveIntegration } from './cognitive_integration';
 import { DeepResearchEngine, ResearchSession, ResearchFinding } from './deep_research';
@@ -1298,7 +1299,11 @@ ${hole.suggested_depth} | Value: ${(hole.estimated_value * 100).toFixed(0)}% | C
 // CLI INTERFACE
 // ============================================================================
 
-if (require.main === module) {
+const isMainModule = process.argv[1] && (
+  process.argv[1] === fileURLToPath(import.meta.url) ||
+  process.argv[1].includes('living_core')
+);
+if (isMainModule) {
   const core = new LivingCore({
     dbPath: './ronald.db',
     heartbeatIntervalMs: 5000, // 5 seconds for testing
