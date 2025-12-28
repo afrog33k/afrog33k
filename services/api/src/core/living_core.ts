@@ -21,6 +21,7 @@
 
 import * as Database from 'better-sqlite3';
 import { EventEmitter } from 'events';
+import { ResearchAdapter, SearchResult, RepoInfo, PaperInfo } from './research_adapter';
 
 // ============================================================================
 // TYPES
@@ -149,6 +150,7 @@ export class LivingCore extends EventEmitter {
   private config: LivingCoreConfig;
   private running: boolean = false;
   private state: HeartbeatState;
+  private researchAdapter: ResearchAdapter;
 
   constructor(config: Partial<LivingCoreConfig> = {}) {
     super();
@@ -165,6 +167,10 @@ export class LivingCore extends EventEmitter {
 
     this.db = new Database(this.config.dbPath);
     this.initializeSchema();
+
+    // Initialize research adapter
+    this.researchAdapter = new ResearchAdapter();
+    this.setupResearchAdapterEvents();
 
     this.state = {
       lastBeat: new Date(),
