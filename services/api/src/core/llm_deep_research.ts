@@ -102,6 +102,62 @@ export interface ResearchConfig {
   enableParallelMode: boolean;
   parallelAgents: number;
   verifyAllCitations: boolean;
+  enableSelfReflection: boolean;      // Error-reflection loop from Step-DeepResearch
+  maxReflectionRetries: number;       // Max retries per step (default: 3)
+  enableCrossValidation: boolean;     // Multi-source verification
+  crossValidationThreshold: number;   // Min sources to validate a claim
+  authorityBoostEnabled: boolean;     // Boost authoritative sources
+}
+
+// Authority ranking from Step-DeepResearch (curated authoritative domains)
+export const AUTHORITY_DOMAINS: Record<string, number> = {
+  // Tech documentation (highest authority)
+  'developer.mozilla.org': 1.0,
+  'docs.microsoft.com': 1.0,
+  'developer.apple.com': 1.0,
+  'cloud.google.com': 0.95,
+  'aws.amazon.com': 0.95,
+  'kubernetes.io': 0.95,
+  'reactjs.org': 0.95,
+  'vuejs.org': 0.95,
+  'angular.io': 0.95,
+  // Academic/research
+  'arxiv.org': 0.95,
+  'scholar.google.com': 0.9,
+  'dl.acm.org': 0.9,
+  'ieee.org': 0.9,
+  // Engineering blogs (high authority)
+  'engineering.fb.com': 0.85,
+  'netflixtechblog.com': 0.85,
+  'eng.uber.com': 0.85,
+  'medium.com/airbnb-engineering': 0.85,
+  'blog.google': 0.85,
+  'github.blog': 0.85,
+  // News/content
+  'stackoverflow.com': 0.8,
+  'github.com': 0.8,
+  'hackernews.com': 0.75,
+  'medium.com': 0.6,
+  'dev.to': 0.6,
+  // Default
+  'default': 0.5,
+};
+
+// Self-reflection types
+export interface ReflectionResult {
+  success: boolean;
+  issue?: string;
+  suggestion?: string;
+  shouldRetry: boolean;
+  modifiedAction?: ResearchAction;
+}
+
+// Cross-validation types
+export interface ValidatedClaim {
+  claim: string;
+  sources: Citation[];
+  validationScore: number;  // 0-1 based on source agreement
+  conflicts: string[];       // Conflicting information found
 }
 
 // ============================================================================
@@ -194,6 +250,48 @@ Does this source adequately support the claim? Respond in JSON:
   "verified": true/false,
   "explanation": "Why or why not",
   "actualSupport": "What the source actually says about this topic"
+}`,
+
+  // Self-reflection prompt (Step-DeepResearch error-reflection loop)
+  reflectOnStep: (step: ResearchStep, workspace: Workspace) => `You are a research agent reflecting on your last action.
+
+ORIGINAL QUESTION: ${workspace.question.original}
+CURRENT CONFIDENCE: ${(workspace.confidence * 100).toFixed(0)}%
+
+LAST ACTION:
+Thought: ${step.thought}
+Action: ${JSON.stringify(step.action)}
+Result: ${step.observation.substring(0, 1000)}
+
+Evaluate if this action was successful and helpful. Consider:
+1. Did we get relevant information?
+2. Did this advance our understanding?
+3. Was the search query effective?
+4. Are there any errors or issues?
+
+Respond in JSON:
+{
+  "success": true/false,
+  "issue": "What went wrong (if applicable)",
+  "suggestion": "How to improve the approach",
+  "shouldRetry": true/false,
+  "modifiedAction": { "type": "...", ... } // Only if shouldRetry is true
+}`,
+
+  // Cross-validation prompt
+  crossValidate: (claim: string, sources: Citation[]) => `Validate if these sources agree on the following claim.
+
+CLAIM: ${claim}
+
+SOURCES:
+${sources.map((s, i) => `[${i + 1}] ${s.title}:\n${s.content.substring(0, 500)}`).join('\n\n')}
+
+Analyze source agreement. Respond in JSON:
+{
+  "validationScore": 0.0-1.0,
+  "agreementSummary": "What sources agree on",
+  "conflicts": ["Any conflicting information"],
+  "confidence": "high/medium/low"
 }`,
 
   generateReport: (workspace: Workspace, steps: ResearchStep[]) => `Generate a comprehensive research report.
