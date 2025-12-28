@@ -19,7 +19,7 @@
  * - Maintenance Worker = Subconscious upkeep
  */
 
-import * as Database from 'better-sqlite3';
+import Database from 'better-sqlite3';
 import { EventEmitter } from 'events';
 import { ResearchAdapter, SearchResult, RepoInfo, PaperInfo } from './research_adapter';
 
