@@ -854,6 +854,44 @@ export class MockLLMProvider implements LLMProvider {
 }
 
 // ============================================================================
+// OLLAMA LLM PROVIDER
+// ============================================================================
+
+export class OllamaLLMProvider implements LLMProvider {
+  name = 'ollama';
+  private baseUrl: string;
+  private model: string;
+
+  constructor(model: string = 'qwen3:4b', baseUrl: string = 'http://localhost:11434') {
+    this.model = model;
+    this.baseUrl = baseUrl;
+  }
+
+  async complete(prompt: string, options: { maxTokens?: number; temperature?: number } = {}): Promise<string> {
+    const response = await fetch(`${this.baseUrl}/api/generate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: this.model,
+        prompt: prompt,
+        stream: false,
+        options: {
+          num_predict: options.maxTokens || 1024,
+          temperature: options.temperature || 0.7,
+        },
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Ollama API error: ${response.status}`);
+    }
+
+    const data = await response.json();
+    return data.response || '';
+  }
+}
+
+// ============================================================================
 // ANTHROPIC LLM PROVIDER
 // ============================================================================
 
@@ -905,11 +943,13 @@ const isMainModule = process.argv[1] && (
 if (isMainModule) {
   const question = process.argv[2] || 'What is Server Driven UI (SDUI) and how do companies like Airbnb implement it?';
 
-  // Use mock for testing, replace with AnthropicLLMProvider for real use
-  const llm = new MockLLMProvider();
+  // Use Ollama with qwen3:4b for real LLM-powered research
+  console.log('Using Ollama with qwen3:4b for LLM-powered research...\n');
+  const llm = new OllamaLLMProvider('qwen3:4b');
   const engine = new LLMDeepResearch(llm, {
-    maxSteps: 10,
-    maxSourcesPerQuery: 5,
+    maxSteps: 8,  // Limit steps for faster testing
+    maxSourcesPerQuery: 3,
+    minConfidenceToStop: 0.6,
   });
 
   engine.on('research_started', ({ question }) => {
