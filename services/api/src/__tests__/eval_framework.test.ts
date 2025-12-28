@@ -433,9 +433,9 @@ describe('Eval Framework: Integration Test', () => {
     // 5. Generate report
     const report = system.reports.generateReport('ronald_adonyo');
 
-    // Health.predictionAccuracy averages attention accuracy + interest accuracy
-    // Interest accuracy is 0 (no interest validations), so (0.8 + 0) / 2 = 0.4
-    expect(report.health.predictionAccuracy).toBeCloseTo(0.4, 1);
+    // Health.predictionAccuracy now only includes metrics with data
+    // We have attention data (0.8 accuracy) but no interest data, so it uses only attention
+    expect(report.health.predictionAccuracy).toBeCloseTo(0.8, 1);
     expect(report.verdict.status).not.toBe('failing');
   });
 
