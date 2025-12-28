@@ -216,7 +216,7 @@ export class WorkflowDetector extends EventEmitter {
   }
 
   /**
-   * Generalize target to pattern (e.g., "src/utils/foo.ts" -> "src/**/*.ts")
+   * Generalize target to pattern (e.g., "src/utils/foo.ts" becomes "src/ ** / *.ts")
    */
   private generalizeTarget(target: string): string {
     // Extract extension
