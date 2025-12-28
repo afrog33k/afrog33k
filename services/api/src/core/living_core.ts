@@ -803,6 +803,7 @@ export class LivingCore extends EventEmitter {
   /**
    * Deep research using the full research harness
    * Returns findings converted to ResearchResult format
+   * Also persists synthesis, new concepts, and generates beliefs
    */
   private async doDeepResearch(rabbitHole: RabbitHole): Promise<ResearchResult[]> {
     // Load existing concepts as prior knowledge
@@ -811,6 +812,77 @@ export class LivingCore extends EventEmitter {
 
     // Run deep research
     const session = await this.deepResearch.research(rabbitHole.topic);
+
+    // === PERSIST NEW CONCEPTS ===
+    for (const conceptName of session.synthesis.newConcepts) {
+      const existing = this.db.prepare(`SELECT id FROM concepts WHERE name = ?`).get(conceptName);
+      if (!existing) {
+        this.db.prepare(`
+          INSERT INTO concepts (id, name, type, created_at, access_count, last_accessed)
+          VALUES (?, ?, 'topic', ?, 1, ?)
+        `).run(
+          this.generateId(),
+          conceptName,
+          new Date().toISOString(),
+          new Date().toISOString()
+        );
+      }
+    }
+
+    // === GENERATE BELIEFS FROM FINDINGS ===
+    for (const finding of session.synthesis.keyFindings) {
+      for (const insight of finding.keyInsights.slice(0, 2)) {
+        if (insight.length > 50) {
+          this.db.prepare(`
+            INSERT INTO beliefs (id, content, confidence, evidence, contradictions, created_at, updated_at)
+            VALUES (?, ?, ?, ?, '[]', ?, ?)
+          `).run(
+            this.generateId(),
+            insight.substring(0, 500),
+            finding.relevanceScore * finding.credibilityScore,
+            JSON.stringify([finding.id]),
+            new Date().toISOString(),
+            new Date().toISOString()
+          );
+        }
+      }
+    }
+
+    // === STORE RESEARCH SYNTHESIS ===
+    this.db.prepare(`
+      UPDATE rabbit_holes SET
+        status = 'completed',
+        synthesis = ?,
+        curiosity_score = ?,
+        settled_score = ?,
+        confidence = ?,
+        recommendations = ?
+      WHERE id = ?
+    `).run(
+      session.synthesis.summary,
+      session.curiosityScore,
+      session.settledScore,
+      session.synthesis.confidenceLevel,
+      JSON.stringify(session.synthesis.recommendations),
+      rabbitHole.id
+    );
+
+    // === UPDATE COGNITIVE MODEL ===
+    // Infer interests from research topic
+    this.cognitive.inferBeliefsFromObservation(
+      `Researched: ${rabbitHole.topic}. Found: ${session.synthesis.newConcepts.join(', ')}`,
+      session.synthesis.newConcepts
+    );
+
+    // Emit synthesis event for external consumers
+    this.emit('research_synthesis', {
+      rabbitHole,
+      synthesis: session.synthesis,
+      curiosityScore: session.curiosityScore,
+      settledScore: session.settledScore,
+      newConcepts: session.synthesis.newConcepts,
+      recommendations: session.synthesis.recommendations,
+    });
 
     // Convert findings to ResearchResult format
     return session.findings.map((finding: ResearchFinding) => ({
