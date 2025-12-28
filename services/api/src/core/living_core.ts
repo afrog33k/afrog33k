@@ -153,6 +153,7 @@ export class LivingCore extends EventEmitter {
   private running: boolean = false;
   private state: HeartbeatState;
   private researchAdapter: ResearchAdapter;
+  private deepResearch: DeepResearchEngine;
   private cognitive: CognitiveIntegration;
 
   constructor(config: Partial<LivingCoreConfig> = {}) {
@@ -174,6 +175,15 @@ export class LivingCore extends EventEmitter {
     // Initialize research adapter
     this.researchAdapter = new ResearchAdapter();
     this.setupResearchAdapterEvents();
+
+    // Initialize deep research engine
+    this.deepResearch = new DeepResearchEngine({
+      maxIterations: 5,
+      maxSourcesPerQuery: 5,
+      settledThreshold: 0.7,
+      costBudget: 50,
+    });
+    this.setupDeepResearchEvents();
 
     // Initialize cognitive integration (BDI + Drives + Attention)
     this.cognitive = new CognitiveIntegration(this.db);
