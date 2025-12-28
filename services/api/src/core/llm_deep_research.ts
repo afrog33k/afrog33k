@@ -726,6 +726,19 @@ export class SmartRuleBasedProvider implements LLMProvider {
     return '{}';
   }
 
+  /**
+   * Extract keywords from a question for better search results
+   */
+  private extractKeywords(text: string): string {
+    // Remove common question words and stop words
+    const stopWords = ['what', 'is', 'how', 'do', 'does', 'are', 'the', 'a', 'an', 'and', 'or', 'to', 'of', 'in', 'for', 'with', 'companies', 'implement', 'use', 'using'];
+    const words = text.toLowerCase()
+      .replace(/[?.,!]/g, '')
+      .split(/\s+/)
+      .filter(w => w.length > 2 && !stopWords.includes(w));
+    return words.slice(0, 5).join(' ');
+  }
+
   private planNextAction(
     question: string,
     synthesis: string,
@@ -737,16 +750,19 @@ export class SmartRuleBasedProvider implements LLMProvider {
     let action: ResearchAction;
     let thought: string;
 
+    // Extract keywords for better search
+    const keywords = this.extractKeywords(question);
+
     if (this.iteration === 1) {
-      // First step: search for the main question
-      thought = `Starting research on "${question}". Will search the web first to get an overview.`;
-      action = { type: 'search_web', query: question };
-      this.actionHistory.push('search_web:' + question);
+      // First step: search for the main topic keywords
+      thought = `Starting research on "${question}". Searching for keywords: "${keywords}"`;
+      action = { type: 'search_web', query: keywords };
+      this.actionHistory.push('search_web:' + keywords);
     } else if (this.iteration === 2) {
       // Second step: search GitHub for implementations
       thought = 'Now searching for code implementations and repositories to understand practical applications.';
-      action = { type: 'search_repos', query: question };
-      this.actionHistory.push('search_repos:' + question);
+      action = { type: 'search_repos', query: keywords };
+      this.actionHistory.push('search_repos:' + keywords);
     } else if (openQuestions.length > 0 && this.iteration <= 5) {
       // Address open questions
       const nextQ = openQuestions[0].replace(/\?$/, '');
