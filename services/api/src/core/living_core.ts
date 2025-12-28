@@ -868,11 +868,11 @@ export class LivingCore extends EventEmitter {
       GROUP BY rh.id
     `).all() as any[];
 
-    // Filter out already carded holes
+    // Filter out already carded holes (check by topic to avoid duplicates)
     const uncardedHoles = completedHoles.filter(hole => {
       const existing = this.db.prepare(`
-        SELECT 1 FROM cards WHERE evidence LIKE ?
-      `).get(`%${hole.id}%`);
+        SELECT 1 FROM cards WHERE title = ?
+      `).get(`Research: ${hole.topic}`);
       return !existing;
     });
 
