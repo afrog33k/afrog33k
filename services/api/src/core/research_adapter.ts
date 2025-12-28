@@ -172,8 +172,104 @@ export class ResearchAdapter extends EventEmitter {
       }
     }
 
+    // Fall back to Wikipedia if SearXNG failed
     if (results.length === 0) {
-      this.emit('web_search_error', { query, error: 'All SearXNG instances failed' });
+      const wikiResults = await this.wikipediaSearch(query, maxResults);
+      if (wikiResults.length > 0) {
+        return wikiResults;
+      }
+      this.emit('web_search_error', { query, error: 'All search sources failed' });
+    }
+
+    return results;
+  }
+
+  /**
+   * Search Wikipedia for concept information (reliable fallback)
+   */
+  private async wikipediaSearch(query: string, maxResults: number): Promise<SearchResult[]> {
+    const results: SearchResult[] = [];
+
+    try {
+      const encodedQuery = encodeURIComponent(query);
+      const url = `https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodedQuery}&format=json&srlimit=${maxResults}&origin=*`;
+
+      const response = await fetch(url, {
+        headers: {
+          'User-Agent': this.userAgent,
+          'Accept': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        return results;
+      }
+
+      const data = await response.json();
+
+      for (const result of data.query?.search || []) {
+        // Remove HTML tags from snippet
+        const snippet = result.snippet?.replace(/<[^>]+>/g, '') || '';
+
+        results.push({
+          id: `wiki-${result.pageid}`,
+          url: `https://en.wikipedia.org/wiki/${encodeURIComponent(result.title.replace(/ /g, '_'))}`,
+          title: result.title,
+          snippet: snippet,
+          source: 'wikipedia',
+        });
+      }
+
+      if (results.length > 0) {
+        this.emit('web_search_complete', { query, results, source: 'wikipedia' });
+      }
+
+    } catch (error) {
+      // Wikipedia search failed
+    }
+
+    return results;
+  }
+
+  /**
+   * Search dev.to for developer-focused content
+   */
+  async searchDevTo(query: string, maxResults: number = 5): Promise<SearchResult[]> {
+    const results: SearchResult[] = [];
+
+    try {
+      const encodedQuery = encodeURIComponent(query);
+      const url = `https://dev.to/api/articles?per_page=${maxResults}&tag=${encodedQuery}`;
+
+      const response = await fetch(url, {
+        headers: {
+          'User-Agent': this.userAgent,
+          'Accept': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        return results;
+      }
+
+      const data = await response.json();
+
+      for (const article of data || []) {
+        results.push({
+          id: `devto-${article.id}`,
+          url: article.url,
+          title: article.title,
+          snippet: article.description || '',
+          source: 'dev.to',
+        });
+      }
+
+      if (results.length > 0) {
+        this.emit('devto_search_complete', { query, results });
+      }
+
+    } catch (error) {
+      // dev.to search failed
     }
 
     return results;
