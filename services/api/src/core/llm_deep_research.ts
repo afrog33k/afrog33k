@@ -1341,14 +1341,26 @@ More investigation may be needed to fully address all sub-questions.`;
   }
 }
 
+// Singleton instance for SmartRuleBasedProvider to maintain state across calls
+let smartRuleBasedInstance: SmartRuleBasedProvider | null = null;
+
 export class MockLLMProvider implements LLMProvider {
   name = 'mock';
 
   async complete(prompt: string): Promise<string> {
-    // Delegate to smart rule-based provider
-    const smart = new SmartRuleBasedProvider();
-    return smart.complete(prompt);
+    // Use singleton to maintain state across calls
+    if (!smartRuleBasedInstance) {
+      smartRuleBasedInstance = new SmartRuleBasedProvider();
+    }
+    return smartRuleBasedInstance.complete(prompt);
   }
+}
+
+/**
+ * Reset the smart provider state (useful for testing)
+ */
+export function resetSmartProvider(): void {
+  smartRuleBasedInstance = null;
 }
 
 // ============================================================================
