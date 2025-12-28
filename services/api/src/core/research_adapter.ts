@@ -379,7 +379,9 @@ export class ResearchAdapter extends EventEmitter {
 // CLI TEST
 // ============================================================================
 
-if (require.main === module) {
+// CLI test - run with: npx tsx src/core/research_adapter.ts "query"
+const isMainModule = typeof require !== 'undefined' && require.main === module;
+if (isMainModule) {
   const adapter = new ResearchAdapter();
 
   adapter.on('web_search_complete', ({ query, results }) => {
