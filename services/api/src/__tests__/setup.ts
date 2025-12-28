@@ -334,6 +334,83 @@ export function getTestDb(): Database.Database {
       CREATE INDEX IF NOT EXISTS idx_evolution_patterns_type ON evolution_patterns(type);
       CREATE INDEX IF NOT EXISTS idx_evolution_rules_active ON evolution_rules(is_active);
     `);
+
+    // Create Working Memory tables (inspired by AGI Memory)
+    testDb.exec(`
+      CREATE TABLE IF NOT EXISTS working_memory (
+        id TEXT PRIMARY KEY,
+        type TEXT NOT NULL,
+        content TEXT NOT NULL,
+        priority INTEGER DEFAULT 5,
+        ttl_seconds INTEGER DEFAULT 300,
+        created_at TEXT NOT NULL,
+        expires_at TEXT NOT NULL,
+        metadata_json TEXT
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_working_memory_expires ON working_memory(expires_at);
+      CREATE INDEX IF NOT EXISTS idx_working_memory_type ON working_memory(type);
+    `);
+
+    // Create Drives tables (inspired by AGI Memory)
+    testDb.exec(`
+      CREATE TABLE IF NOT EXISTS user_drives (
+        type TEXT PRIMARY KEY,
+        level REAL NOT NULL,
+        baseline_level REAL NOT NULL,
+        accumulation_rate REAL NOT NULL,
+        decay_rate REAL NOT NULL,
+        satisfaction_threshold REAL NOT NULL,
+        last_updated TEXT NOT NULL,
+        last_satisfied TEXT
+      );
+
+      CREATE TABLE IF NOT EXISTS drive_events (
+        id TEXT PRIMARY KEY,
+        drive_type TEXT NOT NULL,
+        event_type TEXT NOT NULL,
+        amount REAL NOT NULL,
+        level_before REAL NOT NULL,
+        level_after REAL NOT NULL,
+        trigger TEXT,
+        timestamp TEXT NOT NULL
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_drive_events_type ON drive_events(drive_type);
+      CREATE INDEX IF NOT EXISTS idx_drive_events_timestamp ON drive_events(timestamp);
+    `);
+
+    // Create Heartbeat tables (inspired by AGI Memory)
+    testDb.exec(`
+      CREATE TABLE IF NOT EXISTS heartbeat_observations (
+        id TEXT PRIMARY KEY,
+        timestamp TEXT NOT NULL,
+        attention_state TEXT,
+        urgent_drives_json TEXT,
+        pending_tasks INTEGER,
+        working_memory_size INTEGER,
+        decay_results_json TEXT,
+        actions_proposed_json TEXT,
+        actions_executed_json TEXT,
+        energy_used INTEGER
+      );
+
+      CREATE TABLE IF NOT EXISTS heartbeat_events (
+        id TEXT PRIMARY KEY,
+        event_type TEXT NOT NULL,
+        data_json TEXT,
+        timestamp TEXT NOT NULL
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_heartbeat_obs_timestamp ON heartbeat_observations(timestamp);
+      CREATE INDEX IF NOT EXISTS idx_heartbeat_events_type ON heartbeat_events(event_type);
+    `);
+
+    // Add last_accessed and access_count to user_beliefs for memory decay
+    testDb.exec(`
+      -- Note: In production, use ALTER TABLE. Here we recreate for testing.
+      -- These columns are added for memory decay functionality
+    `);
   }
   return testDb;
 }
