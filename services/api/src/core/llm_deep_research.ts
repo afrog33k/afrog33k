@@ -331,6 +331,9 @@ export class LLMDeepResearch extends EventEmitter {
   private llm: LLMProvider;
   private config: ResearchConfig;
 
+  private validatedClaims: ValidatedClaim[] = [];
+  private reflectionHistory: Map<number, ReflectionResult[]> = new Map();
+
   constructor(llm: LLMProvider, config: Partial<ResearchConfig> = {}) {
     super();
     this.adapter = new ResearchAdapter();
@@ -341,7 +344,12 @@ export class LLMDeepResearch extends EventEmitter {
       minConfidenceToStop: config.minConfidenceToStop || 0.8,
       enableParallelMode: config.enableParallelMode || false,
       parallelAgents: config.parallelAgents || 3,
-      verifyAllCitations: config.verifyAllCitations || true,
+      verifyAllCitations: config.verifyAllCitations ?? true,
+      enableSelfReflection: config.enableSelfReflection ?? true,
+      maxReflectionRetries: config.maxReflectionRetries || 3,
+      enableCrossValidation: config.enableCrossValidation ?? true,
+      crossValidationThreshold: config.crossValidationThreshold || 2,
+      authorityBoostEnabled: config.authorityBoostEnabled ?? true,
     };
   }
 
@@ -411,10 +419,37 @@ export class LLMDeepResearch extends EventEmitter {
 
       this.emit('step_completed', { step, workspace });
 
+      // Self-reflection (Step-DeepResearch error-reflection loop)
+      if (this.config.enableSelfReflection && action.type !== 'conclude') {
+        const reflection = await this.reflectOnStep(step, workspace);
+        this.trackReflection(workspace.iteration, reflection);
+
+        if (!reflection.success && reflection.shouldRetry) {
+          // Retry with modified action (up to maxReflectionRetries)
+          const retries = this.reflectionHistory.get(workspace.iteration)?.length || 0;
+          if (retries < this.config.maxReflectionRetries && reflection.modifiedAction) {
+            this.emit('reflection_retry', { step, reflection, retryCount: retries });
+
+            // Re-execute with modified action
+            const retryObservation = await this.executeAction(reflection.modifiedAction, workspace);
+            step.observation = retryObservation;
+            step.synthesis = await this.synthesizeFindings(workspace, retryObservation);
+            workspace.synthesis = step.synthesis;
+          }
+        }
+        tokensUsed += 200;
+      }
+
       // Check for conclusion action
       if (action.type === 'conclude') {
         break;
       }
+    }
+
+    // Cross-validation of key claims (after main loop)
+    if (this.config.enableCrossValidation && workspace.citations.length >= this.config.crossValidationThreshold) {
+      await this.crossValidateClaims(workspace);
+      tokensUsed += workspace.citations.length * 100;
     }
 
     // Step 4: Verify citations if enabled
