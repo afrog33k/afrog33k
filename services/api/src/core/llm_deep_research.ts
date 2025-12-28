@@ -862,7 +862,7 @@ export class OllamaLLMProvider implements LLMProvider {
   private baseUrl: string;
   private model: string;
 
-  constructor(model: string = 'qwen3:4b', baseUrl: string = 'http://localhost:11434') {
+  constructor(model: string = 'qwen3:4b', baseUrl: string = 'http://127.0.0.1:11434') {
     this.model = model;
     this.baseUrl = baseUrl;
   }
