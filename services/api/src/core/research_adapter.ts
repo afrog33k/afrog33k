@@ -497,16 +497,38 @@ if (isMainModule) {
     });
   });
 
+  adapter.on('arxiv_search_skipped', ({ query, reason }) => {
+    console.log(`\n📄 arXiv search skipped for "${query}": ${reason}`);
+  });
+
+  adapter.on('web_search_error', ({ error }) => {
+    console.log(`\n❌ Web search error: ${error}`);
+  });
+
   // Test searches
   const query = process.argv[2] || 'SDUI server driven UI';
+  const academicQuery = 'machine learning autonomous agents';
 
-  console.log(`Testing research adapter with query: "${query}"\n`);
+  console.log(`Testing research adapter with query: "${query}"`);
+  console.log(`Is academic topic: ${adapter.isAcademicTopic(query)}\n`);
 
   Promise.all([
     adapter.webSearch(query),
     adapter.searchRepos(query),
     adapter.searchArxiv(query),
-  ]).then(() => {
+  ]).then(([webResults, repoResults, arxivResults]) => {
+    console.log(`\nSummary for "${query}":`);
+    console.log(`  Web results: ${webResults.length}`);
+    console.log(`  Repo results: ${repoResults.length}`);
+    console.log(`  arXiv results: ${arxivResults.length}`);
+
+    // Also test academic query
+    console.log(`\n\n--- Testing academic query: "${academicQuery}" ---`);
+    console.log(`Is academic topic: ${adapter.isAcademicTopic(academicQuery)}`);
+    return adapter.searchArxiv(academicQuery, 3);
+  }).then((academicResults) => {
+    console.log(`arXiv results for academic query: ${academicResults.length}`);
+  }).then(() => {
     console.log('\n✅ Research complete');
   }).catch(console.error);
 }
