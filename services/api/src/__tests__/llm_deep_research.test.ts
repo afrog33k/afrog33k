@@ -22,10 +22,10 @@ import {
   ResearchStep,
   AUTHORITY_DOMAINS,
   resetSmartProvider,
-} from '../llm_deep_research';
+} from '../core/llm_deep_research';
 
 // Mock ResearchAdapter to avoid network calls
-vi.mock('../research_adapter', () => ({
+vi.mock('../core/research_adapter', () => ({
   ResearchAdapter: vi.fn().mockImplementation(() => ({
     webSearch: vi.fn().mockResolvedValue([
       {
