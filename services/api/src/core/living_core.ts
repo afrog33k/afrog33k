@@ -1069,6 +1069,24 @@ export class LivingCore extends EventEmitter {
   }
 
   private synthesizeCardContent(hole: any, results: any[], insights: string[]): string {
+    // Use deep research synthesis if available
+    if (hole.synthesis) {
+      const recommendations = JSON.parse(hole.recommendations || '[]');
+      return `## ${hole.topic}
+
+${hole.synthesis}
+
+### Research Scores
+- Settled: ${((hole.settled_score || 0) * 100).toFixed(0)}%
+- Curiosity remaining: ${((hole.curiosity_score || 0) * 100).toFixed(0)}%
+- Confidence: ${((hole.confidence || 0) * 100).toFixed(0)}%
+
+### Recommendations
+${recommendations.map((r: string) => `- ${r}`).join('\n') || 'None yet.'}
+`;
+    }
+
+    // Fallback to basic synthesis
     const sources = results.map(r => `- ${r.source} (${r.source_type})`).join('\n');
     const insightText = insights.length > 0
       ? insights.map(i => `- ${i}`).join('\n')
@@ -1088,6 +1106,15 @@ ${hole.suggested_depth} | Value: ${(hole.estimated_value * 100).toFixed(0)}% | C
   }
 
   private generateSuggestedActions(hole: any, results: any[]): string[] {
+    // Use deep research recommendations if available
+    if (hole.recommendations) {
+      try {
+        const recs = JSON.parse(hole.recommendations);
+        if (recs.length > 0) return recs;
+      } catch (e) {}
+    }
+
+    // Fallback to basic suggestions
     const actions: string[] = [];
 
     if (hole.suggested_depth === 'skim') {
